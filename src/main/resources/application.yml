@@ -1,0 +1,37 @@
+spring:
+  application:
+    name: evergen
+  server:
+    port: 8080
+
+# ByteWatt API??
+bytewatt:
+  api:
+    base-url: https://apiservice.byte-watt.com/v1
+    api-key: "Xiw5BieVDA5AHd8mjFkjWdomFIoUQcjzyeypBARUKe/vDLAC4wluJW0iZwveDoPInfF3SZtFT5Ru3BlLtZCexAzxHmwDGpIKAngPWxkbombGIg0q2aPa09bC+ANbraBJR417HDiVM+7AD0AceetK9z35+SU4SPG0f7hf6EGIFw0="
+    key: "e50WQcdUvZWSsLcOpfYpyp+SFKM819UFnoLiutgxqNkLFBRVj/QRi43UqBoxPDpKr96AbienzM96yt4WauESxNj55VHnOePpLP5di9RKdBfAwpd1Z2z8M19ZYuq8x0FqRXks4kD36rP3xvI5DZ7IBup6MUmyVzc6Lhi+Tje/W3E="
+
+# AWS??
+cloud:
+  aws:
+    credentials:
+      access-key: "123"
+      secret-key: "123"
+    region:
+      static: ap-southeast-2
+    endpoint:
+      sqs: http://localhost:4566
+
+# SQS??
+sqs:
+  queues:
+    command: http://localhost:4566/000000000000/example-queue
+    telemetry: http://localhost:4566/000000000000/telemetry-queue
+    onboarding: http://localhost:4566/000000000000/onboarding-queue
+    offboarding: http://localhost:4566/000000000000/offboarding-queue
+
+# ????
+logging:
+  level:
+    root: INFO
+    com.neovolt.evergen: DEBUG
