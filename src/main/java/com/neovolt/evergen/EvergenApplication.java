@@ -23,7 +23,7 @@ public class EvergenApplication implements CommandLineRunner {
 
 	@Override
 	public void run(String... args) {
-		log.info("Starting Evergen Application");
+		log.info("Starting Evergen Application...");
 	}
 
 	@Scheduled(fixedDelay = 1000)
