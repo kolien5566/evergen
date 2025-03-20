@@ -1,10 +1,12 @@
 package com.neovolt.evergen.model.site;
 
-import lombok.Data;
 import java.util.List;
+
+import lombok.Data;
 
 @Data
 public class SiteStaticData {
+    private String siteId;
     private List<BatteryInverterStatic> batteryInverters;
     private List<HybridInverterStatic> hybridInverters;
     private List<SolarInverterStatic> solarInverters;
@@ -44,23 +46,16 @@ public class SiteStaticData {
 
     @Data
     public static class MeterStatic {
+        // 常量定义，提供类型安全的引用方式
+        public static final String METER_TYPE_GRID = "grid";
+        public static final String METER_TYPE_LOAD = "load";
+        public static final String METER_TYPE_GENERATION = "generation";
+        
         private String deviceId;
         private String manufacturer;
         private String model;
-        private MeterType type;
+        private String type;
         private String location;
-
-        public enum MeterType {
-            GRID("grid"),
-            LOAD("load"),
-            GENERATION("generation");
-
-            private final String value;
-
-            MeterType(String value) {
-                this.value = value;
-            }
-        }
     }
 
     @Data

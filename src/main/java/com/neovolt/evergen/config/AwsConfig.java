@@ -9,6 +9,9 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
+/**
+ * AWS服务配置，创建SQS客户端连接
+ */
 @Configuration
 public class AwsConfig {
     @Value("${cloud.aws.credentials.access-key}")
@@ -23,6 +26,11 @@ public class AwsConfig {
     @Value("${cloud.aws.endpoint.sqs}")
     private String sqsEndpoint;
 
+    /**
+     * 创建Amazon SQS客户端，用于与SQS队列交互
+     * 
+     * @return 配置好的SQS客户端
+     */
     @Bean
     public AmazonSQS amazonSQS() {
         BasicAWSCredentials awsCredentials = new BasicAWSCredentials(accessKey, secretKey);

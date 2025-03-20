@@ -1,0 +1,1122 @@
+asyncapi: 3.0.0
+info:
+  title: Evergen OEM API
+  version: 1.0.0
+  description:
+    Integration point for OEMs to integrate with Evergen using async
+    messaging protocols like SQS.
+
+  externalDocs:
+    description: Evergen OEM API High-Level Overview
+    url: https://evergen-public.notion.site/High-Level-Overview-Evergen-OEM-API-Connect-v1-0-7139c103d7e6490db0403a2c261880c4
+
+servers:
+  production:
+    host: sqs.ap-southeast-2.amazonaws.com/
+    description: AWS SQS in Asia Pacific (Sydney).
+    protocol: https
+
+channels:
+  ToEvergen:
+    description: Messages from the OEM device to Evergen.
+    address: "$EVERGEN_AWS_ACCOUNT_ID/telemetry-$OEM_NAME-$ENVIRONMENT"
+    messages:
+      Telemetry:
+        $ref: "#/components/messages/telemetry"
+      OnboardingResponse:
+        $ref: "#/components/messages/onboardingResponse"
+      OffboardingResponse:
+        $ref: "#/components/messages/offboardingResponse"
+  FromEvergen:
+    description: Messages from Evergen to the OEM device.
+    address: "$EVERGEN_AWS_ACCOUNT_ID/commands-$OEM_NAME-$ENVIRONMENT"
+    messages:
+      Command:
+        $ref: "#/components/messages/command"
+      OnboardingRequest:
+        $ref: "#/components/messages/onboardingRequest"
+      OffboardingRequest:
+        $ref: "#/components/messages/offboardingRequest"
+
+operations:
+  ReceiveMessages:
+    action: receive
+    channel: 
+      $ref: "#/channels/ToEvergen"
+
+  SendMessages:
+    action: send
+    channel: 
+      $ref: "#/channels/FromEvergen"
+
+components:
+  messages:
+    telemetry:
+      name: Telemetry
+      title: Telemetry object sent from a device to Evergen
+      summary: "Contains the current operating state of the device. This should be measured and sent every 1 minute. (For 3 phase systems: power and energy fields should be summed across all phases, frequency should be the average of all phases, and voltage should be provided for each phase separately.)"
+      contentType: application/json
+      payload:
+        $ref: "#/components/schemas/telemetryV1"
+    command:
+      name: ReceiveCommand
+      title: Command object sent from Evergen to a device
+      summary: Contains an instuction command from Evergen for the OEM to translate into a battery command.
+      contentType: application/json
+      payload:
+        $ref: "#/components/schemas/commandV1"
+    onboardingRequest:
+      name: OnboardingRequest
+      title: Onboarding request sent from Evergen to an OEM to request permission to monitor and control a device.
+      summary: Contains the serial number for a device that Evergen is requesting to onboard, in order to receive its telemetry and the permission to control it through battery commands.
+      contentType: application/json
+      payload:
+        $ref: "#/components/schemas/onboardingRequestV1"
+    offboardingRequest:
+      name: OffboardingRequest
+      title: Offboarding request sent from Evergen to an OEM to request permission to monitor and control a device.
+      summary: Contains the serial number for a device that Evergen is requesting to offboard, to no longer receive its telemetry and lose permission to control it through battery commands.
+      contentType: application/json
+      payload:
+        $ref: "#/components/schemas/offboardingRequestV1"
+    onboardingResponse:
+      name: OnboardingResponse
+      title: Onboarding response sent from an OEM to Evergen to communicate the connection result of our onboarding request.
+      summary: Contains the serial number for the device, the connection result for the onboarding request, and the static information for the site.
+      contentType: application/json
+      payload:
+        $ref: "#/components/schemas/onboardingResponseV1"
+    offboardingResponse:
+      name: OffboardingResponse
+      title: Offboarding response sent from an OEM to Evergen to communicate the result of our offboarding request.
+      summary: Contains the serial number for the device, the connection result for the offboarding request.
+      contentType: application/json
+      payload:
+        $ref: "#/components/schemas/offboardingResponseV1"
+
+  schemas:
+    telemetryV1:
+      title: Telemetry
+      type: object
+      required:
+        - specversion
+        - type
+        - source
+        - id
+        - time
+        - datacontenttype
+        - data
+      properties:
+        specversion:
+          $ref: "#/components/schemas/cloudEventsSpecVersion"
+        type:
+          type: string
+          format: uri
+          enum:
+            - com.evergen.energy.telemetry.v1
+        source:
+          type: string
+          format: uri
+          example: urn:com.example
+          description: This attribute contains a value describing the type of event related to the originating occurrence.
+        id:
+          type: string
+          example: A234-1234-1234
+          description: Identifies the event. Producers MUST ensure that source + id is unique for each distinct event. If a duplicate event is re-sent (e.g. due to a network error) it MAY have the same id. Consumers MAY assume that Events with identical source and id are duplicates.
+        time:
+          type: string
+          format: date-time
+          example: "2023-08-05T17:31:00Z"
+          description: UTC time at which the measurement was taken, in RFC3339 datetime format.
+        datacontenttype:
+          type: string
+          enum: ["application/json"]
+        data:
+          $ref: "#/components/schemas/telemetryV1data"
+
+    commandV1:
+      title: Command
+      type: object
+      required:
+        - specversion
+        - type
+        - source
+        - id
+        - time
+        - datacontenttype
+        - data
+      properties:
+        specversion:
+          $ref: "#/components/schemas/cloudEventsSpecVersion"
+        type:
+          type: string
+          format: uri
+          enum:
+            - com.evergen.energy.battery-inverter.command.v1
+          description: Specifies message type and version.
+        source:
+          type: string
+          format: uri
+          example: urn:com.example
+          description: This attribute contains a value describing the type of event related to the originating occurrence.
+        id:
+          type: string
+          example: A234-1234-1234
+        time:
+          type: string
+          format: date-time
+          example: "2023-08-05T17:31:00Z"
+        datacontenttype:
+          type: string
+          enum: ["application/json"]
+        data:
+          $ref: "#/components/schemas/commandV1data"
+    
+    onboardingRequestV1:
+      title: OnboardingRequest
+      type: object
+      required:
+        - specversion
+        - type
+        - source
+        - id
+        - time
+        - datacontenttype
+        - data
+      properties:
+        specversion:
+          $ref: "#/components/schemas/cloudEventsSpecVersion"
+        type:
+          type: string
+          format: uri
+          enum:
+            - com.evergen.energy.onboarding-request.v1
+          description: Specifies message type and version.
+        source:
+          type: string
+          format: uri
+          example: urn:com.example
+          description: This attribute contains a value describing the type of event related to the originating occurrence.
+        id:
+          type: string
+          example: A234-1234-1234
+        time:
+          type: string
+          format: date-time
+          example: "2023-08-05T17:31:00Z"
+        datacontenttype:
+          type: string
+          enum: ["application/json"]
+        data:
+          $ref: "#/components/schemas/onboardingRequestV1data"
+
+    offboardingRequestV1:
+      title: OffboardingRequest
+      type: object
+      required:
+        - specversion
+        - type
+        - source
+        - id
+        - time
+        - datacontenttype
+        - data
+      properties:
+        specversion:
+          $ref: "#/components/schemas/cloudEventsSpecVersion"
+        type:
+          type: string
+          format: uri
+          enum:
+            - com.evergen.energy.offboarding-request.v1
+          description: Specifies message type and version.
+        source:
+          type: string
+          format: uri
+          example: urn:com.example
+          description: This attribute contains a value describing the type of event related to the originating occurrence.
+        id:
+          type: string
+          example: A234-1234-1234
+        time:
+          type: string
+          format: date-time
+          example: "2023-08-05T17:31:00Z"
+        datacontenttype:
+          type: string
+          enum: ["application/json"]
+        data:
+          $ref: "#/components/schemas/offboardingRequestV1data"
+    
+    onboardingResponseV1:
+      title: OnboardingResponse
+      type: object
+      required:
+        - specversion
+        - type
+        - source
+        - id
+        - time
+        - datacontenttype
+        - data
+      properties:
+        specversion:
+          $ref: "#/components/schemas/cloudEventsSpecVersion"
+        type:
+          type: string
+          format: uri
+          enum:
+            - com.evergen.energy.onboarding-response.v1
+          description: Specifies message type and version.
+        source:
+          type: string
+          format: uri
+          example: urn:com.example
+          description: This attribute contains a value describing the type of event related to the originating occurrence.
+        id:
+          type: string
+          example: A234-1234-1234
+        time:
+          type: string
+          format: date-time
+          example: "2023-08-05T17:31:00Z"
+        datacontenttype:
+          type: string
+          enum: ["application/json"]
+        data:
+          $ref: "#/components/schemas/onboardingResponseV1data"
+    
+    offboardingResponseV1:
+      title: OffboardingResponse
+      type: object
+      required:
+        - specversion
+        - type
+        - source
+        - id
+        - time
+        - datacontenttype
+        - data
+      properties:
+        specversion:
+          $ref: "#/components/schemas/cloudEventsSpecVersion"
+        type:
+          type: string
+          format: uri
+          enum:
+            - com.evergen.energy.offboarding-response.v1
+          description: Specifies message type and version.
+        source:
+          type: string
+          format: uri
+          example: urn:com.example
+          description: This attribute contains a value describing the type of event related to the originating occurrence.
+        id:
+          type: string
+          example: A234-1234-1234
+        time:
+          type: string
+          format: date-time
+          example: "2023-08-05T17:31:00Z"
+        datacontenttype:
+          type: string
+          enum: ["application/json"]
+        data:
+          $ref: "#/components/schemas/offboardingResponseV1data"
+
+    commandV1data:
+      type: object
+      required:
+        - deviceId
+      properties:
+        deviceId:
+          type: string
+        realMode:
+          oneOf:
+            - $ref: "#/components/schemas/chargeOnlySelfConsumptionCommand"
+            - $ref: "#/components/schemas/selfConsumptionCommand"
+            - $ref: "#/components/schemas/chargeCommand"
+            - $ref: "#/components/schemas/dischargeCommand"
+        reactiveMode:
+          $ref: "#/components/schemas/reactiveModeCommand"
+        startTime:
+          type: string
+          format: date-time
+          example: "2023-08-05T17:31:00Z"
+          description: Time the command is expected to start from. This is typically set to current time but may allow for command scheduling in the future.
+        durationSeconds:
+          type: integer
+          example: 300
+          description: Number of seconds the command should be followed from the start time.
+
+    reactiveModeCommand:
+      type: object
+      properties:
+        powerFactorCorrection:
+          type: object
+          description: Maintain the power factor of the power flow at a specified value. 
+          properties:
+            targetPowerFactor:
+              type: number
+              format: double
+              example: 1.0
+        inject:
+          type: object
+          description: Inject the specified amount of VARs. (For 3 phase systems, preferably divide this amount equally across all phases.)
+          properties:
+            reactivePowerVar:
+              type: integer
+        absorb:
+          type: object
+          description: Absorb the specified amount of VARs. (For 3 phase systems, preferably divide this amount equally across all phases.)
+          properties:
+            reactivePowerVar:
+              type: integer
+
+    selfConsumptionCommand:
+      type: object
+      required:
+        - selfConsumptionCommand
+      description: Discharge the battery to service site load if required, charge battery if excess solar power is present.
+      properties:
+        selfConsumptionCommand:
+          $ref: "#/components/schemas/selfConsumptionCommandProperty"
+    chargeOnlySelfConsumptionCommand:
+      type: object
+      required:
+        - chargeOnlySelfConsumptionCommand
+      description: Do not discharge the battery to service site load, charge battery if excess solar power is present.
+      properties:
+        chargeOnlySelfConsumptionCommand:
+          $ref: "#/components/schemas/chargeOnlySelfConsumptionCommandProperty"
+    chargeCommand:
+      type: object
+      required:
+        - charge
+      description: Charge the battery at the specified rate. The battery should ramp to this power rate within 20 seconds. (For 3 phase systems, preferably divide this amount equally across all phases.)
+      properties:
+        chargeCommand:
+          $ref: "#/components/schemas/chargeProperty"
+    dischargeCommand:
+      type: object
+      required:
+        - discharge
+      description: Discharge the battery at the specified rate. The battery should ramp to this power rate within 20 seconds. (For 3 phase systems, prefferably divide this amount equally across all phases.)
+      properties:
+        dischargeCommand:
+          $ref: "#/components/schemas/dischargeProperty"
+
+    selfConsumptionCommandProperty:
+      type: object
+    chargeOnlySelfConsumptionCommandProperty:
+      type: object
+    chargeProperty:
+      type: object
+      required:
+        - powerW
+      properties:
+        powerW:
+          type: integer
+          minimum: 0
+    dischargeProperty:
+      type: object
+      required:
+        - powerW
+      properties:
+        powerW:
+          type: integer
+          minimum: 0
+
+    telemetryV1data:
+      type: object
+      required:
+        - siteId
+      properties:
+        siteId:
+          type: string
+          description: Unique identifier that represents a physical location where one or more devices are located. Must be lower case. If the OEM does not differentiate a site then serial number is reused. This is not the Evergen assigned site ID.
+        batteryInverters:
+          type: array
+          description: Inverters with a DC connection(s) to a battery. The site may also have an independent AC coupled connection to a solar inverter.
+          items:
+            - $ref: "#/components/schemas/batteryInverters"
+        hybridInverters:
+          type: array
+          description: Inverters with a DC connection to a battery and to a solar array(s).
+          items:
+            - $ref: "#/components/schemas/hybridInverters"
+        solarInverters:
+          type: array
+          description: Inverters with a DC connection(s) to a solar array(s). These should only be included if they're not already being reported as an AC-coupled system connected to a BatteryInverter (under SolarPower field).
+          items:
+            - $ref: "#/components/schemas/solarInverters"
+        meters:
+          type: array
+          items:
+            - $ref: "#/components/schemas/meters"
+
+    batteryInverters:
+      type: object
+      required:
+        - deviceId
+        - deviceTime
+        - batteryPowerW
+        - meterPowerW
+        - solarPowerW
+        - batteryReactivePowerVar
+        - gridVoltage1V
+        - gridFrequencyHz
+        - cumulativeBatteryChargeEnergyWh
+        - cumulativeBatteryDischargeEnergyWh
+        - stateOfCharge
+        - stateOfHealth
+        - maxChargePowerW
+        - maxDischargePowerW
+      properties:
+        deviceId:
+          type: string
+          description: Unique identifier for the DER - must be lower case. Could be the same as device serial number. Recommended to be a UUID, or very large integer.
+        deviceTime:
+          type: string
+          format: date-time
+          example: "2023-08-05T17:31:00Z"
+          description: UTC time at which the measurement was taken, in RFC3339 datetime format.
+        batteryPowerW:
+          type: integer
+          description: AC active power output by the battery inverter, in Watts. (battery discharge = +ve, battery charge = -ve)
+        meterPowerW:
+          type: integer
+          description: AC active power imported from the grid, in Watts. (import = +ve, export = -ve)
+        solarPowerW:
+          type: integer
+          description: Total AC active power output by any AC coupled solar inverter(s), in Watts.
+          minimum: 0
+        batteryReactivePowerVar:
+          type: integer
+          description: AC reactive power measured at the battery inverter, in VARs.
+        solarReactivePowerVar:
+          type: integer
+          description: AC reactive power measured at the connection to an AC coupled solar inverter(s), in VARs.
+        meterReactivePowerVar:
+          type: integer
+          description: AC reactive power measured at the grid connection, in VARs.
+        gridVoltage1V:
+          type: number
+          format: double
+          description: Phase 1 voltage level as measured at the battery inverter, in Volts.
+        gridVoltage2V:
+          type: number
+          format: double
+          description: Phase 2 voltage level as measured at the battery inverter, in Volts. (If present)
+        gridVoltage3V:
+          type: number
+          format: double
+          description: Phase 3 voltage level as measured at the battery inverter, in Volts. (If present)
+        gridFrequencyHz:
+          type: number
+          format: double
+          description: Output frequency of AC voltage measured at the battery inverter, in Hertz. (Average of phases)
+          minimum: 0
+        cumulativeBatteryChargeEnergyWh:
+          type: number
+          format: double
+          description: Cumulative value of total energy charged to the battery over device lifetime, in Watt-Hours.
+          minimum: 0
+        cumulativeBatteryDischargeEnergyWh:
+          type: number
+          format: double
+          description: Cumulative value of total energy discharged by the battery over device lifetime, in Watt-Hours.
+          minimum: 0
+        cumulativePvGenerationWh:
+          type: number
+          format: double
+          description: Cumulative value of total energy generated over device lifetime, in Watt-Hours.
+          minimum: 0
+        cumulativeGridImportWh:
+          type: number
+          format: double
+          description: Cumulative value of total energy imported from the grid over device lifetime, in Watt-Hours.
+          minimum: 0
+        cumulativeGridExportWh:
+          type: number
+          format: double
+          description: Cumulative value of total energy exported to the grid over device lifetime, in Watt-Hours.
+          minimum: 0
+        stateOfCharge:
+          type: number
+          format: double
+          description: Ratio of available energy in the battery compared to current battery capacity, accounting for current battery health, as a decimal (0-1).
+          minimum: 0
+          maximum: 1
+        stateOfHealth:
+          type: number
+          format: double
+          description: Ratio of current battery energy storage capacity compared to original nameplate energy storage capacity, as a decimal (0-1).
+          minimum: 0
+          maximum: 1
+        maxChargePowerW:
+          type: integer
+          description: Maximum power rate the battery inverter and battery are capable of charging at, accounting for current battery health, in Watts.
+          minimum: 0
+        maxDischargePowerW:
+          type: integer
+          description: Maximum power rate the battery inverter and battery are capable of discharging at, accounting for current battery health, in Watts.
+          minimum: 0
+
+    hybridInverters:
+      type: object
+      required:
+        - deviceId
+        - deviceTime
+        - batteryPowerW
+        - meterPowerW
+        - solarPowerW
+        - batteryReactivePowerVar
+        - gridVoltage1V
+        - gridFrequencyHz
+        - cumulativeBatteryChargeEnergyWh
+        - cumulativeBatteryDischargeEnergyWh
+        - stateOfCharge
+        - stateOfHealth
+        - maxChargePowerW
+        - maxDischargePowerW
+      properties:
+        deviceId:
+          type: string
+          description: Unique identifier for the DER - must be lower case. Could be the same as device serial number. Recommended to be a UUID, or very large integer.
+        deviceTime:
+          type: string
+          format: date-time
+          example: "2023-08-05T17:31:00Z"
+          description: UTC time at which the measurement was taken, in RFC3339 datetime format.
+        batteryPowerW:
+          type: integer
+          description: DC power output by the connected battery, in Watts. (battery discharge = +ve, battery charge = -ve)
+        meterPowerW:
+          type: integer
+          description: AC active power imported from the grid, in Watts. (import = +ve, export = -ve)
+        solarPowerW:
+          type: integer
+          description: Total DC power output by a connected solar system, in Watts.
+          minimum: 0
+        batteryReactivePowerVar:
+          type: integer
+          description: AC reactive power measured at the hybrid inverter, in VARs.
+        meterReactivePowerVar:
+          type: integer
+          description: AC reactive power measured at the grid connection, in VARs.
+        gridVoltage1V:
+          type: number
+          format: double
+          description: Phase 1 voltage level as measured at the hybrid inverter, in Volts.
+        gridVoltage2V:
+          type: number
+          format: double
+          description: Phase 2 voltage level as measured at the hybrid inverter, in Volts. (If present)
+        gridVoltage3V:
+          type: number
+          format: double
+          description: Phase 3 voltage level as measured at the hybrid inverter, in Volts. (If present)
+        gridFrequencyHz:
+          type: number
+          format: double
+          description: Output frequency of AC voltage measured at the hybrid inverter, in Hertz. (Average of phases)
+          minimum: 0
+        cumulativeBatteryChargeEnergyWh:
+          type: number
+          format: double
+          description: Cumulative value of total energy charged to the battery over device lifetime, in Watt-Hours.
+          minimum: 0
+        cumulativeBatteryDischargeEnergyWh:
+          type: number
+          format: double
+          description: Cumulative value of total energy discharged by the battery over device lifetime, in Watt-Hours.
+          minimum: 0
+        cumulativePvGenerationWh:
+          type: number
+          format: double
+          description: Cumulative value of total energy generated over device lifetime, in Watt-Hours.
+          minimum: 0
+        cumulativeGridImportWh:
+          type: number
+          format: double
+          description: Cumulative value of total energy imported from the grid over device lifetime, in Watt-Hours.
+          minimum: 0
+        cumulativeGridExportWh:
+          type: number
+          format: double
+          description: Cumulative value of total energy exported to the grid over device lifetime, in Watt-Hours.
+          minimum: 0
+        stateOfCharge:
+          type: number
+          format: double
+          description: Ratio of available energy in the battery compared to current battery capacity, accounting for current battery health, as a decimal (0-1).
+          minimum: 0
+          maximum: 1
+        stateOfHealth:
+          type: number
+          format: double
+          description: Ratio of current battery energy capacity compared to original nameplate energy capacity, as a decimal (0-1).
+          minimum: 0
+          maximum: 1
+        maxChargePowerW:
+          type: integer
+          description: Maximum power rate the hybrid inverter and battery are capable of charging at, accounting for current battery health, in Watts.
+          minimum: 0
+        maxDischargePowerW:
+          type: integer
+          description: Maximum power rate the hybrid inverter and battery are capable of discharging at, accounting for current battery health, in Watts.
+          minimum: 0
+
+    solarInverters:
+      type: object
+      required:
+        - deviceId
+        - deviceTime
+        - powerW
+        - reactivePowerVar
+        - gridVoltage1V
+        - cumulativeGenerationWh
+      properties:
+        deviceId:
+          type: string
+          description: Unique identifier for the DER - must be lower case. Could be the same as device serial number. Recommended to be a UUID, or very large integer.
+        deviceTime:
+          type: string
+          format: date-time
+          example: "2023-08-05T17:31:00Z"
+          description: UTC time at which the measurement was taken, in RFC3339 datetime format.
+        powerW:
+          type: integer
+          description: AC active power output by the solar inverter, in Watts.
+          minimum: 0
+        reactivePowerVar:
+          type: integer
+          description: AC reactive power measured at the solar inverter, in VARs.
+        gridVoltage1V:
+          type: number
+          format: double
+          description: Phase 1 voltage level as measured at the solar inverter, in Volts.
+        gridVoltage2V:
+          type: number
+          format: double
+          description: Phase 2 voltage level as measured at the solar inverter, in Volts. (If present)
+        gridVoltage3V:
+          type: number
+          format: double
+          description: Phase 3 voltage level as measured at the solar inverter, in Volts. (If present)
+        gridFrequencyHz:
+          type: number
+          format: double
+          description: Output frequency of AC voltage measured at the solar inverter, in Hertz. (Average of phases)
+          minimum: 0
+        cumulativeGenerationWh:
+          type: number
+          format: double
+          description: Cumulative value of total energy generated by the solar inverted over device lifetime, in Watt-Hours.
+          minimum: 0
+
+    meters:
+      type: object
+      required:
+        - deviceId
+        - deviceTime
+        - powerW
+        - reactivePowerVar
+        - gridVoltage1V
+        - gridFrequencyHz
+        - cumulativeGridImportWh
+        - cumulativeGridExportWh
+      properties:
+        deviceId:
+          type: string
+          description: Unique identifier for the DER - must be lower case. Could be the same as device serial number. Recommended to be a UUID, or very large integer.
+        deviceTime:
+          type: string
+          format: date-time
+          example: "2023-08-05T17:31:00Z"
+          description: UTC time at which the measurement was taken, in RFC3339 datetime format.
+        powerW:
+          type: integer
+          description: AC active power imported from the grid, in Watts.
+        reactivePowerVar:
+          type: integer
+          description: AC reactive power measured at the meter, in VARs.
+        gridVoltage1V:
+          type: number
+          format: double
+          description: Phase 1 voltage level as measured at the meter, in Volts.
+        gridVoltage2V:
+          type: number
+          format: double
+          description: Phase 2 voltage level as measured at the meter, in Volts. (If present)
+        gridVoltage3V:
+          type: number
+          format: double
+          description: Phase 3 voltage level as measured at the meter, in Volts. (If present)
+        gridFrequencyHz:
+          type: number
+          format: double
+          description: Output frequency of AC voltage measured at the meter, in Hertz. (Average of phases)
+          minimum: 0
+        cumulativeGridImportWh:
+          type: number
+          format: double
+          description: Cumulative value of total energy imported from the grid over device lifetime, in Watt-Hours.
+          minimum: 0
+        cumulativeGridExportWh:
+          type: number
+          format: double
+          description: Cumulative value of total energy exported to the grid over device lifetime, in Watt-Hours.
+          minimum: 0
+
+    onboardingRequestV1data:
+      type: object
+      required:
+        - serialNumber
+      properties:
+        serialNumber:
+          type: string
+          description: Serial number for the battery, hybrid or solar inverter.
+
+    offboardingRequestV1data:
+      type: object
+      required:
+        - serialNumber
+      properties:
+        serialNumber:
+          type: string
+          description: Serial number for the battery, hybrid or solar inverter.
+
+    onboardingResponseV1data:
+      type: object
+      required:
+        - serialNumber
+        - deviceId
+        - connectionStatus
+      properties:
+        serialNumber:
+          type: string
+          description: Serial number for the battery, hybrid or solar inverter.
+        deviceId:
+          type: string
+          description: Id for the device, that is provided with telemetry.
+        connectionStatus:
+          type: string
+          description: Connection status of the device
+          enum:
+            - connected
+            - not-connected
+        errorReason:
+          type: string
+          description: Reason for device connection failure
+          enum:
+            - wrong-serial
+            - registration-incomplete
+            - in-other-vpp
+            - device-offline
+            - incompatible-hardware
+            - incompatible-firmware
+        siteStaticData:
+          $ref: "#/components/schemas/siteStaticDataV1"
+    
+
+    siteStaticDataV1:
+      type: object
+      required:
+        - siteId
+      properties:
+        siteId:
+          type: string
+          description: Unique identifier that represents a physical location where one or more devices are located. Must be lower case. If the OEM does not differentiate a site then serial number is reused. This is not the Evergen assigned site ID.
+        uniqueMeterIdentifier:
+          type: string
+          description: Unique meter identifier associated with the site's metering point.
+        country:
+          type: string
+          description: Country in which site is located.
+        distributionNetworkOperator:
+          type: string
+          description: Distribution network operator for the distribution network that the site is connected to.
+        state:
+          type: string
+          description: State or provence in which site is located.
+        postcode:
+          type: string
+          description: Postcode in which site is located.
+        address:
+          type: string
+          description: Street address of site.
+        exportLimitW:
+          type: integer
+          minimum: 0
+        batteriesStaticData:
+          type: array
+          description: Static data for batteries at the site.
+          items:
+            - $ref: "#/components/schemas/batteryStaticData"
+        batteryInvertersStaticData:
+          type: array
+          description: Static data for battery inverters at the site.
+          items:
+            - $ref: "#/components/schemas/batteryInverterStaticData"
+        hybridInvertersStaticData:
+          type: array
+          description: Static data for hybrid inverters at the site.
+          items:
+            - $ref: "#/components/schemas/hybridInverterStaticData"
+        solarInvertersStaticData:
+          type: array
+          description: Static data for solar inverters at the site.
+          items:
+            - $ref: "#/components/schemas/solarInverterStaticData"
+        metersStaticData:
+          type: array
+          descroption: Static data for meters at the site.
+          items:
+            - $ref: "#/components/schemas/meterStaticData"
+
+    batteryStaticData:
+      type: object
+      required:
+        - deviceId
+        - serialNumber
+        - manufacturer
+        - model
+        - firmware
+        - nameplateEnergyCapacityWh
+        - maxChargePowerW
+        - maxDischargePowerW
+        - cumulativeBatteryChargeEnergyWh
+        - cumulativeBatteryDischargeEnergyWh
+      properties:
+        deviceId:
+          type: string
+          description: Unique identifier for the DER - must be lower case. Could be the same as device serial number. Recommended to be a UUID, or very large integer.
+        serialNumber:
+          type: string
+          description: Serial number for the battery.
+        manufacturer:
+          type: string
+          description: Manufacturer of the battery.
+        model:
+          type: string
+          description: Model code of the battery.
+        firmware:
+          type: string
+          description: Firmware version being run on the device.
+        nameplateEnergyCapacityWh:
+          type: integer
+          minimum: 0
+        maxChargePowerW:
+          type: integer
+          minimum: 0
+        maxDischargePowerW:
+          type: integer
+          minimum: 0
+        cumulativeBatteryChargeEnergyWh:
+          type: integer
+          description: Cumulative value of total energy charged to the battery over device lifetime, at time of onboarding, in Watt-Hours.
+          minimum: 0
+        cumulativeBatteryDischargeEnergyWh:
+          type: integer
+          description: Cumulative value of total energy discharged from the battery over device lifetime, at time of onboarding, in Watt-Hours.
+          minimum: 0
+    
+    batteryInverterStaticData:
+      type: object
+      required:
+        - deviceId
+        - serialNumber
+        - manufacturer
+        - model
+        - firmware
+        - installationDate
+        - connectedBatteryIds
+        - batteryInverterAcCapacityW
+        - solarInverterAcCapacityW
+      properties:
+        deviceId:
+          type: string
+          description: Unique identifier for the DER - must be lower case. Could be the same as device serial number. Recommended to be a UUID, or very large integer.
+        serialNumber:
+          type: string
+          description: Serial number for the battery inverter.
+        manufacturer:
+          type: string
+          description: Manufacturer of the battery.
+        model:
+          type: string
+          description: Model code of the battery inverter.
+        firmware:
+          type: string
+          description: Firmware version being run on the device.
+        installationDate:
+          type: string
+          format: date-time
+          example: "2023-08-05T17:31:00Z"
+          description: UTC time at which the device was installed, in RFC3339 datetime format.
+        batteryInverterAcCapacityW:
+          type: integer
+          minimum: 0
+        solarInverterAcCapacityW:
+          type: integer
+          description: Total capacity of any solar inverters AC-coupled to the battery inverter, in Watts.
+          minimum: 0
+        connectedBatteryIds:
+          type: array
+          description: List of battery serial numbers connected to this inverter.
+          items:
+            type: string
+
+    hybridInverterStaticData:
+      type: object
+      required:
+        - deviceId
+        - serialNumber
+        - manufacturer
+        - model
+        - firmware
+        - installationDate
+        - hybridInverterAcCapacityW
+        - solarInverterAcCapacityW
+        - solarArrayRatedDcOutputW
+        - connectedBatteryIds
+      properties:
+        deviceId:
+          type: string
+          description: Unique identifier for the DER - must be lower case. Could be the same as device serial number. Recommended to be a UUID, or very large integer.
+        serialNumber:
+          type: string
+          description: Serial number for the hybrid inverter.
+        manufacturer:
+          type: string
+          description: Manufacturer of the battery.
+        model:
+          type: string
+          description: Model code of the hybrid inverter.
+        firmware:
+          type: string
+          description: Firmware version being run on the device.
+        installationDate:
+          type: string
+          format: date-time
+          example: "2023-08-05T17:31:00Z"
+          description: UTC time at which the device was installed, in RFC3339 datetime format.
+        hybridInverterAcCapacityW:
+          type: integer
+          minimum: 0
+        solarArrayRatedDcOutputW:
+          type: integer
+          minimum: 0
+        solarInverterAcCapacityW:
+          type: integer
+          description: Total capacity of any solar inverters AC-coupled to the battery inverter, in Watts.
+          minimum: 0
+        connectedBatteryIds:
+          type: array
+          description: List of battery serial numbers connected to this inverter.
+          items:
+            type: string
+
+    solarInverterStaticData:
+      type: object
+      required:
+        - deviceId
+        - serialNumber
+        - manufacturer
+        - model
+        - firmware
+        - installationDate
+        - solarInverterAcCapacityW
+        - solarArrayRatedDcOutputW
+      properties:
+        deviceId:
+          type: string
+          description: Unique identifier for the DER - must be lower case. Could be the same as device serial number. Recommended to be a UUID, or very large integer.
+        serialNumber:
+          type: string
+          description: Serial number for the solar inverter.
+        manufacturer:
+          type: string
+          description: Manufacturer of the battery.
+        model:
+          type: string
+          description: Model code of the solar inverter.
+        firmware:
+          type: string
+          description: Firmware version being run on the device.
+        installationDate:
+          type: string
+          format: date-time
+          example: "2023-08-05T17:31:00Z"
+          description: UTC time at which the device was installed, in RFC3339 datetime format.
+        solarInverterAcCapacityW:
+          type: integer
+          minimum: 0
+        solarArrayRatedDcOutputW:
+          type: integer
+          minimum: 0
+
+    meterStaticData:
+      type: object
+      required:
+        - deviceId
+        - serialNumber
+        - manufacturer
+        - model
+        - firmware
+        - phase
+        - hasControllableLoad
+      properties:
+        deviceId:
+          type: string
+          description: Unique identifier for the DER - must be lower case. Could be the same as device serial number. Recommended to be a UUID, or very large integer.
+        serialNumber:
+          type: string
+          description: Serial number for the meter.
+        manufacturer:
+          type: string
+          description: Manufacturer of the meter.
+        model:
+          type: string
+          description: Model code of the meter.
+        firmware:
+          type: string
+          description: Firmware version being run on the device.
+        hasControllableLoad:
+          type: boolean
+          description: Is the meter connected to a controllable load.
+        phase:
+          type: integer
+          enum: 
+            - 1
+            - 3
+    
+    offboardingResponseV1data:
+      type: object
+      required:
+        - serialNumber
+        - deviceId
+        - connectionStatus
+      properties:
+        serialNumber:
+          type: string
+          description: Serial number for the battery, hybrid or solar inverter.
+        deviceId:
+          type: string
+          description: Id for the device, that is provided with telemetry.
+        connectionStatus:
+          type: string
+          description: Connection status of the device
+          enum:
+            - connected
+            - not-connected
+        errorReason:
+          type: string
+          description: Reason for device disconnection failure
+
+    cloudEventsSpecVersion:
+      type: string
+      enum: ["1.0"]
+      description: The version of the CloudEvents specification which the event uses.
