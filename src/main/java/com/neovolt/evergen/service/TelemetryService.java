@@ -9,11 +9,11 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
-import com.neovolt.evergen.model.cloudevent.TelemetryData;
-import com.neovolt.evergen.model.device.BatteryInverter;
-import com.neovolt.evergen.model.device.HybridInverter;
-import com.neovolt.evergen.model.device.Meter;
-import com.neovolt.evergen.model.device.SolarInverter;
+import com.neovolt.evergen.model.queue.TelemetryData;
+import com.neovolt.evergen.model.site.BatteryInverter;
+import com.neovolt.evergen.model.site.HybridInverter;
+import com.neovolt.evergen.model.site.Meter;
+import com.neovolt.evergen.model.site.SolarInverter;
 
 import io.cloudevents.CloudEvent;
 import lombok.RequiredArgsConstructor;

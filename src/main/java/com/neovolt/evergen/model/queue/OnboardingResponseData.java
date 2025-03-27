@@ -1,4 +1,4 @@
-package com.neovolt.evergen.model.cloudevent;
+package com.neovolt.evergen.model.queue;
 
 import com.neovolt.evergen.model.site.SiteStaticData;
 

@@ -1,0 +1,590 @@
+openapi: 3.0.0
+info:
+  title: ByteWatt Energy Storage System API
+  description: API for monitoring and controlling ByteWatt energy storage systems
+  version: 1.0.0
+servers:
+  - url: https://apiservice.byte-watt.com/v1
+    description: Production server
+
+components:
+  schemas:
+    AuthenticationParams:
+      type: object
+      required:
+        - api_key
+        - timestamp
+        - sign
+      properties:
+        api_key:
+          type: string
+          description: API Public Key
+          example: "iM08O2XqR+CLknNLU2QqjVF2zXIIYyRVY9rcp19VjGt9oBHSbmTI2XFJ8s2xctHhaFMXsnu5dsqcdUFWwYM5S1ZmIOJw2pjkCoqaQ1rhdHEDLfWPvBYLtAGxu2uu8hpG1f04kk8rtSRHnXIt+wszqoOCEnkc9QRzsXtS552iSmE="
+        timestamp:
+          type: integer
+          format: int64
+          description: Unix timestamp used to confirm validity of request. Request is rejected if timespan between request timestamp and server timestamp exceeds 300 seconds.
+          example: 1639016213
+        sign:
+          type: string
+          description: "Signature created by concatenating API Private Key and timestamp, then encrypting with SHA-512"
+          example: "34c3abab48bb8fc590a082c1d151e72933b6506df2c6c8a161bef77f9a49ec71ff4e748da8ba676c646ad47531835b36fd4a7b858b1a1bb27a2b9fd5149be623"
+    
+    RunningData:
+      type: object
+      properties:
+        sys_sn:
+          type: string
+          description: System serial number
+        upload_datetime:
+          type: string
+          format: date-time
+          description: Data upload time
+        p_pv1:
+          type: number
+          format: double
+          description: PV1 power (PCS PV1 Generation power, Unit W)
+        p_pv2:
+          type: number
+          format: double
+          description: PV2 power (PCS PV2 Generation power, Unit W)
+        p_pv3:
+          type: number
+          format: double
+          description: PV3 power (PCS PV3 Generation power, Unit W)
+        p_pv4:
+          type: number
+          format: double
+          description: PV4 power (PCS PV4 Generation power, Unit W)
+        u_pv1:
+          type: number
+          format: double
+          description: PV1 voltage (PCS PV1 Generation voltage, Unit V)
+        u_pv2:
+          type: number
+          format: double
+          description: PV2 voltage (PCS PV2 Generation voltage, Unit V)
+        u_pv3:
+          type: number
+          format: double
+          description: PV3 voltage (PCS PV3 Generation voltage, Unit V)
+        u_pv4:
+          type: number
+          format: double
+          description: PV4 voltage (PCS PV4 Generation voltage, Unit V)
+        u_a:
+          type: number
+          format: double
+          description: Grid voltage 1 (PCS Grid Phase A voltage, Unit V)
+        u_b:
+          type: number
+          format: double
+          description: Grid voltage 2 (PCS Grid Phase B voltage, Unit V)
+        u_c:
+          type: number
+          format: double
+          description: Grid voltage 3 (PCS Grid Phase C voltage, Unit V)
+        fac:
+          type: number
+          format: double
+          description: Grid Frequency (PCS grid frequency, Unit Hz)
+        u_bus:
+          type: number
+          format: double
+          description: Busbar voltage (DC bus voltage, Unit V)
+        p_real_l1:
+          type: number
+          format: double
+          description: L1 power of inverter (PCS phase A real time power, Unit W)
+        p_real_l2:
+          type: number
+          format: double
+          description: L2 power of inverter (PCS phase B real time power, Unit W)
+        p_real_l3:
+          type: number
+          format: double
+          description: L3 power of inverter (PCS phase C real time power, Unit W)
+        t_inv:
+          type: number
+          format: double
+          description: Inverter core temperature (PCS module temperature, Unit °C)
+        pacl1:
+          type: number
+          format: double
+          description: EMS control power commands 1
+        pacl2:
+          type: number
+          format: double
+          description: EMS control power commands 2
+        pacl3:
+          type: number
+          format: double
+          description: EMS control power commands 3
+        inv_work_mode:
+          type: integer
+          description: "Inverter state: 0:WaitMode, 1:SelfTest, 2:CheckMode, 3:NormalMode, 4:UPS, 5:ByPassMode, 6:DCMODE, 7:FaultMode, 8:UpdateMaster, 9:UpdateSlave, 10:UpdateArm"
+        epv_total:
+          type: number
+          format: double
+          description: PV generation energy (PV total generated energy, unit Wh)
+        e_input:
+          type: number
+          format: double
+          description: Grid consumption energy (Total energy purchased by the electricity meter, unit Wh)
+        e_output:
+          type: number
+          format: double
+          description: Feed-in energy (Value of electricity sold by the grid meter, unit Wh)
+        e_charge:
+          type: number
+          format: double
+          description: Battery charging energy (Battery charging energy value, unit Wh)
+        p_meter_l1:
+          type: number
+          format: double
+          description: AC meter power L1 (Electricity meter Real time phase A power, unit W)
+        p_meter_l2:
+          type: number
+          format: double
+          description: AC meter power L2 (Electricity meter Real time phase B power, unit W)
+        p_meter_l3:
+          type: number
+          format: double
+          description: AC meter power L3 (Electricity meter Real time phase C power, unit W)
+        p_meter_dc:
+          type: number
+          format: double
+          description: DC meter power (PV Inverter Power output, unit W)
+        p_bat:
+          type: number
+          format: double
+          description: Battery power (Battery charging and discharging real time power, unit W)
+        soc:
+          type: number
+          format: double
+          description: State of charge (Battery state of charge, unit %)
+        bat_v:
+          type: number
+          format: double
+          description: Battery voltage (Real time battery voltage, unit V)
+        bat_c:
+          type: number
+          format: double
+          description: Battery current (Real time battery current, unit A)
+        flag_bms:
+          type: string
+          description: BMS Flag (Battery charge & discharge flag bit)
+        bms_work:
+          type: integer
+          description: "BMS State: 0:standby, 1:work, 2:parallel, 4:maintenance"
+        p_charge:
+          type: integer
+          description: BMS allowed charging power (Maximum charging power of the battery, unit W)
+        p_discharge:
+          type: integer
+          description: BMS allowed discharging power (Maximum discharge power of the battery, unit W)
+        bms_relay:
+          type: string
+          description: Relay status (Represents the state of the three relays)
+        bms_num:
+          type: string
+          description: Number of battery modules (Number of battery clusters)
+        v_cell_low:
+          type: string
+          description: Battery modules ID + battery identifier + Minimum voltage
+        v_cell_high:
+          type: string
+          description: Battery modules ID + battery identifier + Maximum voltage
+        t_cell_low:
+          type: string
+          description: Battery modules ID + Sampling point number + Minimum temperature
+        t_cell_high:
+          type: string
+          description: Battery modules ID + Sampling point number + Maximum temperature
+        edischarge:
+          type: number
+          format: double
+          description: Battery discharged energy (Battery discharge energy value, unit kWh)
+        ems_status:
+          type: string
+          description: EMS status (System status - Normal or Fault)
+        # Additional fields are included but truncated for readability
+    
+    SystemInfo:
+      type: object
+      properties:
+        sys_sn:
+          type: string
+          description: System serial number
+        system_model:
+          type: string
+          description: System Model
+        cobat:
+          type: number
+          format: double
+          description: Battery capacity
+        usable_capacity:
+          type: number
+          format: double
+          description: Usable capacity
+        mbat:
+          type: string
+          description: Battery type
+        poinv:
+          type: number
+          format: double
+          description: Rated output power of the inverter
+        popv:
+          type: number
+          format: double
+          description: Rated installed capacity of PV
+        solution:
+          type: string
+          description: Different solutions (1:AC solution, 2:DC solution, 3:hybrid solution)
+        ems_version:
+          type: string
+          description: EMS Version
+        bms_version:
+          type: string
+          description: BMS Version
+        inv_version:
+          type: string
+          description: Inverter Firmware Version
+        inv_model:
+          type: string
+          description: Inverter Model
+        meter_model:
+          type: string
+          description: Meter Model
+        meter_phase:
+          type: integer
+          description: Meter Phase
+        set_feed:
+          type: integer
+          description: Max. Feed-in Rate [%]
+        net_work_status:
+          type: integer
+          description: Online status (1:online, 0:offline)
+        state:
+          type: string
+          description: System operation status
+        trans_frequency:
+          type: integer
+          description: Conventional data transmission frequency (10S, 300S)
+        latitude:
+          type: string
+          description: Map longitude coordinates
+        longitude:
+          type: string
+          description: Map coordinate latitude
+        timezone:
+          type: string
+          description: Timezone (+10:00, 00:00, -10:00)
+        safe:
+          type: integer
+          description: Safety ID
+        remark:
+          type: string
+          description: System remarks (visible only to distributor role)
+
+    ApiResponse:
+      type: object
+      properties:
+        code:
+          type: integer
+          description: Return code
+          example: 200
+        info:
+          type: string
+          description: Return message
+          example: "Success"
+        data:
+          type: object
+          nullable: true
+          description: Response data (can be null)
+
+paths:
+  /Open/Coldata/GetLastRunningDataBySN:
+    post:
+      summary: Get latest system routine operating data by SN
+      description: The interface obtains the latest system routine operating data (one piece of data per 5 minutes)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: '#/components/schemas/AuthenticationParams'
+                - type: object
+                  required:
+                    - sys_sn
+                  properties:
+                    sys_sn:
+                      type: string
+                      description: System serial number
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  code:
+                    type: integer
+                    example: 200
+                  info:
+                    type: string
+                    example: "Success"
+                  data:
+                    $ref: '#/components/schemas/RunningData'
+  
+  /Open/Dispatch/RemoteDispatchBySN:
+    post:
+      summary: Send system dispatch commands
+      description: This access is used to send system dispatch commands
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: '#/components/schemas/AuthenticationParams'
+                - type: object
+                  required:
+                    - sys_sn
+                    - control_mode
+                    - expire_time
+                    - parameter
+                    - status
+                  properties:
+                    sys_sn:
+                      type: string
+                      description: System serial number
+                    control_mode:
+                      type: integer
+                      description: "Control mode: 1:Battery only charges from PV, 2:Forced battery charging and discharging, 3:Load Following, 19:No Battery Discharge"
+                      enum: [1, 2, 3, 19]
+                    expire_time:
+                      type: integer
+                      description: Expiration time of dispatch commands (Range 90-86400 seconds)
+                      minimum: 90
+                      maximum: 86400
+                    parameter:
+                      type: string
+                      description: Parameters divided by "|" (para1|para2|para3|para4|para5|para6|para7)
+                    status:
+                      type: integer
+                      description: Power grid dispatching (1:start, 0:stop)
+                      enum: [0, 1]
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+  
+  /Open/ESS/GetSystemList:
+    post:
+      summary: Get system list
+      description: This access is used to acquire system list of different end users
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: '#/components/schemas/AuthenticationParams'
+                - type: object
+                  required:
+                    - page_index
+                    - page_size
+                  properties:
+                    sys_sn:
+                      type: string
+                      description: System serial number (optional)
+                    page_index:
+                      type: integer
+                      description: Page Index (Default to 1)
+                      default: 1
+                    page_size:
+                      type: integer
+                      description: Page Size (Default to 10)
+                      default: 10
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  code:
+                    type: integer
+                    example: 200
+                  info:
+                    type: string
+                    example: "Success"
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/SystemInfo'
+  
+  /Open/ESS/BindSn:
+    post:
+      summary: Bind serial number
+      description: Bind a system serial number to user account
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: '#/components/schemas/AuthenticationParams'
+                - type: object
+                  required:
+                    - sys_sn
+                    - check_code
+                  properties:
+                    sys_sn:
+                      type: string
+                      description: System serial number
+                    check_code:
+                      type: string
+                      description: Check code for verification
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+  
+  /Open/ESS/UnBindSn:
+    post:
+      summary: Unbind serial number
+      description: Unbind a system serial number from user account
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: '#/components/schemas/AuthenticationParams'
+                - type: object
+                  required:
+                    - sys_sn
+                  properties:
+                    sys_sn:
+                      type: string
+                      description: System serial number
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+
+  /Open/Group/GetLastRunningDataByGroup:
+    post:
+      summary: Get latest system routine operating data by group
+      description: The interface obtains the latest system routine operating data for all systems in a group (one piece of data per 5 minutes)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: '#/components/schemas/AuthenticationParams'
+                - type: object
+                  required:
+                    - group_key
+                  properties:
+                    group_key:
+                      type: string
+                      description: Group Key identifier
+                      example: "ea0f0b9f69c542ac82d74c11b673bc11"
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  code:
+                    type: integer
+                    example: 200
+                  info:
+                    type: string
+                    example: "Success"
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/RunningData'
+
+  /Open/Group/AddSnByGroup:
+    post:
+      summary: Add SN to group
+      description: Add a system serial number to a specified group
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: '#/components/schemas/AuthenticationParams'
+                - type: object
+                  required:
+                    - group_key
+                    - sys_sn
+                  properties:
+                    group_key:
+                      type: string
+                      description: Group Key identifier
+                      example: "34c3abab48bb8fc590a082c1d151e72"
+                    sys_sn:
+                      type: string
+                      description: System serial number to add to the group
+                      example: "25000SB235W00445"
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'
+
+  /Open/Group/RemoveSnByGroup:
+    post:
+      summary: Remove SN from group
+      description: Remove a system serial number from a specified group
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: '#/components/schemas/AuthenticationParams'
+                - type: object
+                  required:
+                    - group_key
+                    - sys_sn
+                  properties:
+                    group_key:
+                      type: string
+                      description: Group Key identifier
+                      example: "34c3abab48bb8fc590a082c1d151e72"
+                    sys_sn:
+                      type: string
+                      description: System serial number to remove from the group
+                      example: "25000SB235W00445"
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiResponse'

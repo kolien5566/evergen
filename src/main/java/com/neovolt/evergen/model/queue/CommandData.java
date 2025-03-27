@@ -1,8 +1,10 @@
-package com.neovolt.evergen.model.cloudevent;
+package com.neovolt.evergen.model.queue;
+
+import java.time.LocalDateTime;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
+
 import lombok.Data;
-import java.time.LocalDateTime;
 
 @Data
 public class CommandData {

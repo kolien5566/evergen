@@ -1,9 +1,10 @@
-package com.neovolt.evergen.model.device;
-
-import com.fasterxml.jackson.annotation.JsonFormat;
-import lombok.Data;
+package com.neovolt.evergen.model.site;
 
 import java.time.LocalDateTime;
+
+import com.fasterxml.jackson.annotation.JsonFormat;
+
+import lombok.Data;
 
 @Data
 public class SolarInverter {

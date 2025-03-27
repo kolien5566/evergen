@@ -1,5 +1,6 @@
 package com.neovolt.evergen.model.site;
 
+import java.time.Instant;
 import java.util.List;
 
 import lombok.Data;
@@ -7,62 +8,81 @@ import lombok.Data;
 @Data
 public class SiteStaticData {
     private String siteId;
-    private List<BatteryInverterStatic> batteryInverters;
-    private List<HybridInverterStatic> hybridInverters;
-    private List<SolarInverterStatic> solarInverters;
-    private List<MeterStatic> meters;
+    private String uniqueMeterIdentifier;
+    private String country;
+    private String distributionNetworkOperator;
+    private String state;
+    private String postcode;
+    private String address;
+    private Integer exportLimitW;
+
+    private List<BatteryStaticData> batteriesStaticData;
+    private List<BatteryInverterStaticData> batteryInvertersStaticData;
+    private List<HybridInverterStaticData> hybridInvertersStaticData;
+    private List<SolarInverterStaticData> solarInvertersStaticData;
+    private List<MeterStaticData> metersStaticData;
 
     @Data
-    public static class BatteryInverterStatic {
+    public static class BatteryStaticData {
         private String deviceId;
+        private String serialNumber;
         private String manufacturer;
         private String model;
-        private Integer nominalPowerW;
-        private Integer nominalCapacityWh;
+        private String firmware;
+        private Integer nameplateEnergyCapacityWh;
         private Integer maxChargePowerW;
         private Integer maxDischargePowerW;
+        private Integer cumulativeBatteryChargeEnergyWh;
+        private Integer cumulativeBatteryDischargeEnergyWh;
     }
 
     @Data
-    public static class HybridInverterStatic {
+    public static class BatteryInverterStaticData {
         private String deviceId;
+        private String serialNumber;
         private String manufacturer;
         private String model;
-        private Integer nominalPowerW;
-        private Integer nominalCapacityWh;
-        private Integer maxChargePowerW;
-        private Integer maxDischargePowerW;
-        private List<String> connectedPvStrings;
+        private String firmware;
+        private Instant installationDate;
+        private List<String> connectedBatteryIds;
+        private Integer batteryInverterAcCapacityW;
+        private Integer solarInverterAcCapacityW;
     }
 
     @Data
-    public static class SolarInverterStatic {
+    public static class HybridInverterStaticData {
         private String deviceId;
+        private String serialNumber;
         private String manufacturer;
         private String model;
-        private Integer nominalPowerW;
-        private List<String> connectedPvStrings;
+        private String firmware;
+        private Instant installationDate;
+        private Integer hybridInverterAcCapacityW;
+        private Integer solarInverterAcCapacityW;
+        private Integer solarArrayRatedDcOutputW;
+        private List<String> connectedBatteryIds;
     }
 
     @Data
-    public static class MeterStatic {
-        // 常量定义，提供类型安全的引用方式
-        public static final String METER_TYPE_GRID = "grid";
-        public static final String METER_TYPE_LOAD = "load";
-        public static final String METER_TYPE_GENERATION = "generation";
-        
+    public static class SolarInverterStaticData {
         private String deviceId;
+        private String serialNumber;
         private String manufacturer;
         private String model;
-        private String type;
-        private String location;
+        private String firmware;
+        private Instant installationDate;
+        private Integer solarInverterAcCapacityW;
+        private Integer solarArrayRatedDcOutputW;
     }
 
     @Data
-    public static class PvString {
-        private String id;
-        private Integer nominalPowerW;
-        private Double azimuthDeg;
-        private Double inclinationDeg;
+    public static class MeterStaticData {
+        private String deviceId;
+        private String serialNumber;
+        private String manufacturer;
+        private String model;
+        private String firmware;
+        private Boolean hasControllableLoad;
+        private Integer phase;
     }
 }

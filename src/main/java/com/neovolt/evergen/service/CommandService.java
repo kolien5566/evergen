@@ -1,14 +1,10 @@
 package com.neovolt.evergen.service;
 
-import java.util.List;
-
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
-import com.amazonaws.services.sqs.model.Message;
-import com.neovolt.evergen.model.cloudevent.CommandData;
+import com.neovolt.evergen.model.queue.CommandData;
 
-import io.cloudevents.CloudEvent;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
@@ -28,61 +24,33 @@ public class CommandService {
     
     private static final String COMMAND_TYPE = "com.evergen.energy.battery-inverter.command.v1";
 
-    /**
-     * 处理从命令队列接收的控制指令
-     *
-     * @param maxMessages 最大消息数量
-     * @param waitTimeSeconds 等待时间（秒）
-     */
-    public void processCommands(int maxMessages, int waitTimeSeconds) {
-        List<Message> messages = sqsService.receiveMessages(commandQueueUrl, maxMessages, waitTimeSeconds);
-        
-        for (Message message : messages) {
-            try {
-                CloudEvent event = cloudEventService.deserializeFromString(message.getBody());
-                String eventType = event.getType();
-                
-                if (COMMAND_TYPE.equals(eventType)) {
-                    CommandData commandData = cloudEventService.extractData(event, CommandData.class);
-                    processCommand(commandData);
-                } else {
-                    log.warn("Unexpected event type in command queue: {}", eventType);
-                }
-                
-                // 处理完成后删除消息
-                sqsService.deleteMessage(commandQueueUrl, message.getReceiptHandle());
-            } catch (Exception e) {
-                log.error("Error processing command: {}", e.getMessage(), e);
-            }
-        }
-    }
+/**
+ * 处理命令数据
+ *
+ * @param commandData 命令数据
+ */
+public void processCommand(CommandData commandData) {
+    String deviceId = commandData.getDeviceId();
+    log.info("Processing command for device: {}", deviceId);
     
-    /**
-     * 处理单个控制指令
-     *
-     * @param commandData 命令数据
-     */
-    private void processCommand(CommandData commandData) {
-        String deviceId = commandData.getDeviceId();
-        log.info("Processing command for device: {}", deviceId);
-        
-        try {
-            // 检查命令类型并执行相应操作
-            if (commandData.getRealMode() != null) {
-                // 处理实功率模式命令
-                processRealModeCommand(deviceId, commandData);
-            }
-            
-            if (commandData.getReactiveMode() != null) {
-                // 处理无功功率模式命令
-                processReactiveModeCommand(deviceId, commandData);
-            }
-            
-            log.info("Command processed successfully for device: {}", deviceId);
-        } catch (Exception e) {
-            log.error("Error executing command for device {}: {}", deviceId, e.getMessage(), e);
+    try {
+        // 检查命令类型并执行相应操作
+        if (commandData.getRealMode() != null) {
+            // 处理实功率模式命令
+            processRealModeCommand(deviceId, commandData);
         }
+        
+        if (commandData.getReactiveMode() != null) {
+            // 处理无功功率模式命令
+            processReactiveModeCommand(deviceId, commandData);
+        }
+        
+        log.info("Command processed successfully for device: {}", deviceId);
+    } catch (Exception e) {
+        log.error("Error executing command for device {}: {}", deviceId, e.getMessage(), e);
     }
+}
+    
     
     /**
      * 处理实功率模式命令
