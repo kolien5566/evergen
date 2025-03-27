@@ -308,31 +308,44 @@ public class ByteWattService {
         Integer solarPower = calculateTotalSolarPower(runningData);
         Integer batteryPower = runningData.getPBat() != null ? runningData.getPBat().intValue() : null;
         
-        // 创建HybridInverter对象并设置属性
+        // 使用setter方法设置属性
         HybridInverter inverter = new HybridInverter();
-        // 使用反射设置属性，避免直接调用setter方法
         try {
-            java.lang.reflect.Field deviceIdField = HybridInverter.class.getDeclaredField("deviceId");
-            deviceIdField.setAccessible(true);
-            deviceIdField.set(inverter, runningData.getSysSn());
+            // 设备信息
+            inverter.setDeviceId(runningData.getSysSn());
+            inverter.setDeviceTime(runningData.getUploadDatetime());
             
-            java.lang.reflect.Field deviceTimeField = HybridInverter.class.getDeclaredField("deviceTime");
-            deviceTimeField.setAccessible(true);
-            deviceTimeField.set(inverter, runningData.getUploadDatetime());
+            // 功率数据
+            inverter.setBatteryPowerW(batteryPower);
+            inverter.setMeterPowerW(meterPower);
+            inverter.setSolarPowerW(solarPower);
             
-            java.lang.reflect.Field batteryPowerField = HybridInverter.class.getDeclaredField("batteryPowerW");
-            batteryPowerField.setAccessible(true);
-            batteryPowerField.set(inverter, batteryPower);
+            // 无功功率
+            inverter.setBatteryReactivePowerVar(0);
+            inverter.setMeterReactivePowerVar(0);
             
-            java.lang.reflect.Field meterPowerField = HybridInverter.class.getDeclaredField("meterPowerW");
-            meterPowerField.setAccessible(true);
-            meterPowerField.set(inverter, meterPower);
+            // 电网电压和频率
+            inverter.setGridVoltage1V(runningData.getUA());
+            inverter.setGridVoltage2V(runningData.getUB());
+            inverter.setGridVoltage3V(runningData.getUC());
+            inverter.setGridFrequencyHz(runningData.getFac());
             
-            java.lang.reflect.Field solarPowerField = HybridInverter.class.getDeclaredField("solarPowerW");
-            solarPowerField.setAccessible(true);
-            solarPowerField.set(inverter, solarPower);
+            // 累计能量数据
+            inverter.setCumulativeBatteryChargeEnergyWh(runningData.getECharge());
+            inverter.setCumulativeBatteryDischargeEnergyWh(runningData.getEInput());
+            inverter.setCumulativePvGenerationWh(runningData.getEpvTotal());
+            inverter.setCumulativeGridImportWh(runningData.getEInput());
+            inverter.setCumulativeGridExportWh(runningData.getEOutput());
             
-            // 设置其他属性...
+            // 电池状态
+            inverter.setStateOfCharge(runningData.getSoc());
+            inverter.setStateOfHealth(100.0);
+            
+            // 最大充放电功率
+            if (systemInfo != null) {
+                inverter.setMaxChargePowerW(systemInfo.getPoinv() != null ? systemInfo.getPoinv().intValue() : null);
+                inverter.setMaxDischargePowerW(systemInfo.getPoinv() != null ? systemInfo.getPoinv().intValue() : null);
+            }
         } catch (Exception e) {
             log.error("Error setting HybridInverter properties: {}", e.getMessage());
         }
@@ -350,23 +363,26 @@ public class ByteWattService {
         // 计算总电表功率
         Integer meterPower = calculateTotalMeterPower(runningData);
         
-        // 创建Meter对象并设置属性
+        // 使用setter方法设置属性
         Meter meter = new Meter();
-        // 使用反射设置属性，避免直接调用setter方法
         try {
-            java.lang.reflect.Field deviceIdField = Meter.class.getDeclaredField("deviceId");
-            deviceIdField.setAccessible(true);
-            deviceIdField.set(meter, runningData.getSysSn() + "-meter");
+            // 设备信息
+            meter.setDeviceId(runningData.getSysSn() + "-meter");
+            meter.setDeviceTime(runningData.getUploadDatetime());
             
-            java.lang.reflect.Field deviceTimeField = Meter.class.getDeclaredField("deviceTime");
-            deviceTimeField.setAccessible(true);
-            deviceTimeField.set(meter, runningData.getUploadDatetime());
+            // 电表功率
+            meter.setPowerW(meterPower);
+            meter.setReactivePowerVar(0);
             
-            java.lang.reflect.Field powerField = Meter.class.getDeclaredField("powerW");
-            powerField.setAccessible(true);
-            powerField.set(meter, meterPower);
+            // 电网电压和频率
+            meter.setGridVoltage1V(runningData.getUA());
+            meter.setGridVoltage2V(runningData.getUB());
+            meter.setGridVoltage3V(runningData.getUC());
+            meter.setGridFrequencyHz(runningData.getFac());
             
-            // 设置其他属性...
+            // 累计电网能量
+            meter.setCumulativeGridImportWh(runningData.getEInput());
+            meter.setCumulativeGridExportWh(runningData.getEOutput());
         } catch (Exception e) {
             log.error("Error setting Meter properties: {}", e.getMessage());
         }
@@ -382,13 +398,8 @@ public class ByteWattService {
      */
     public SiteStaticData convertToSiteStaticData(SystemInfo systemInfo) {
         SiteStaticData siteStaticData = new SiteStaticData();
-        // 使用反射设置属性，避免直接调用setter方法
         try {
-            java.lang.reflect.Field siteIdField = SiteStaticData.class.getDeclaredField("siteId");
-            siteIdField.setAccessible(true);
-            siteIdField.set(siteStaticData, systemInfo.getSysSn());
-            
-            // 设置其他属性...
+            siteStaticData.setSiteId(systemInfo.getSysSn());
         } catch (Exception e) {
             log.error("Error setting SiteStaticData properties: {}", e.getMessage());
         }
