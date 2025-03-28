@@ -65,9 +65,13 @@ public class TelemetryService {
             
             for (String siteId : siteIds) {
                 // 收集该站点的所有设备数据
-                List<BatteryInverter> batteryInverters = collectBatteryInverterData(siteId);
+                // 电池逆变器，这里没有
+                List<BatteryInverter> batteryInverters = new ArrayList<>();
+                // pv逆变器，这里没有
+                List<SolarInverter> solarInverters = new ArrayList<>();
+                // 混合逆变器，是有的
                 List<HybridInverter> hybridInverters = collectHybridInverterData(siteId);
-                List<SolarInverter> solarInverters = collectSolarInverterData(siteId);
+                // 电表，是有的
                 List<Meter> meters = collectMeterData(siteId);
                 
                 // 发送遥测数据
@@ -84,23 +88,10 @@ public class TelemetryService {
      * @return 站点ID列表
      */
     private List<String> getAllSiteIds() {
-        // TODO: 实现从数据库或配置中获取所有站点ID
-        // 这里只是模拟返回一个站点ID
+        // 站点ID就是hybrid inverter sn,这里的逻辑是一个站点只有一个混合逆变器和电表
         List<String> siteIds = new ArrayList<>();
-        siteIds.add("site-001");
+        // 这里要从Bytewatt api数据了
         return siteIds;
-    }
-    
-    /**
-     * 收集电池逆变器数据
-     * 
-     * @param siteId 站点ID
-     * @return 电池逆变器数据列表
-     */
-    private List<BatteryInverter> collectBatteryInverterData(String siteId) {
-        // TODO: 实现从设备接口获取电池逆变器数据
-        // 这里只是模拟返回一个电池逆变器数据
-        return new ArrayList<>();
     }
     
     /**
@@ -110,10 +101,8 @@ public class TelemetryService {
      * @return 混合逆变器数据列表
      */
     private List<HybridInverter> collectHybridInverterData(String siteId) {
-        // TODO: 实现从设备接口获取混合逆变器数据
-        // 这里只是返回空列表，实际中需要实现
         List<HybridInverter> hybridInverters = new ArrayList<>();
-        
+        // 当前的逻辑是一个站点下只有一个混合逆变器
         HybridInverter hybridInverter = new HybridInverter();
         hybridInverter.setDeviceId("battery-inverter-001");
         hybridInverter.setDeviceTime(LocalDateTime.now().truncatedTo(ChronoUnit.SECONDS));
@@ -139,27 +128,28 @@ public class TelemetryService {
     }
     
     /**
-     * 收集太阳能逆变器数据
-     * 
-     * @param siteId 站点ID
-     * @return 太阳能逆变器数据列表
-     */
-    private List<SolarInverter> collectSolarInverterData(String siteId) {
-        // TODO: 实现从设备接口获取太阳能逆变器数据
-        // 这里只是返回空列表，实际中需要实现
-        return new ArrayList<>();
-    }
-    
-    /**
      * 收集电表数据
      * 
      * @param siteId 站点ID
      * @return 电表数据列表
      */
     private List<Meter> collectMeterData(String siteId) {
-        // TODO: 实现从设备接口获取电表数据
-        // 这里只是返回空列表，实际中需要实现
-        return new ArrayList<>();
+        List<Meter> meters = new ArrayList<>();
+        // 当前的逻辑是一个站点下只有一个电表
+        Meter meter = new Meter();
+        meter.setDeviceId(siteId);
+        meter.setDeviceTime(LocalDateTime.now().truncatedTo(ChronoUnit.SECONDS));
+        meter.setPowerW(0);
+        meter.setReactivePowerVar(0);
+        meter.setGridVoltage1V(0.0);
+        meter.setGridVoltage2V(0.0);
+        meter.setGridVoltage3V(0.0);
+        meter.setGridFrequencyHz(0.0);
+        meter.setCumulativeGridImportWh(0.0);
+        meter.setCumulativeGridExportWh(0.0);
+
+        meters.add(meter);
+        return meters;
     }
 
     /**
@@ -193,78 +183,6 @@ public class TelemetryService {
         sendMessage(event);
         
         log.debug("Telemetry data sent successfully for site: {}", siteId);
-    }
-    
-    /**
-     * 发送单个电池逆变器的遥测数据
-     * 
-     * @param siteId 站点ID
-     * @param batteryInverter 电池逆变器数据
-     */
-    public void sendBatteryInverterTelemetry(String siteId, BatteryInverter batteryInverter) {
-        log.info("Sending battery inverter telemetry data for site: {}, device: {}", 
-                siteId, batteryInverter.getDeviceId());
-        
-        TelemetryData telemetryData = new TelemetryData();
-        telemetryData.setSiteId(siteId);
-        telemetryData.setBatteryInverters(List.of(batteryInverter));
-        
-        CloudEvent event = cloudEventService.createCloudEvent(TELEMETRY_TYPE, sourceId, telemetryData);
-        sendMessage(event);
-    }
-    
-    /**
-     * 发送单个混合逆变器的遥测数据
-     * 
-     * @param siteId 站点ID
-     * @param hybridInverter 混合逆变器数据
-     */
-    public void sendHybridInverterTelemetry(String siteId, HybridInverter hybridInverter) {
-        log.info("Sending hybrid inverter telemetry data for site: {}, device: {}", 
-                siteId, hybridInverter.getDeviceId());
-        
-        TelemetryData telemetryData = new TelemetryData();
-        telemetryData.setSiteId(siteId);
-        telemetryData.setHybridInverters(List.of(hybridInverter));
-        
-        CloudEvent event = cloudEventService.createCloudEvent(TELEMETRY_TYPE, sourceId, telemetryData);
-        sendMessage(event);
-    }
-    
-    /**
-     * 发送单个太阳能逆变器的遥测数据
-     * 
-     * @param siteId 站点ID
-     * @param solarInverter 太阳能逆变器数据
-     */
-    public void sendSolarInverterTelemetry(String siteId, SolarInverter solarInverter) {
-        log.info("Sending solar inverter telemetry data for site: {}, device: {}", 
-                siteId, solarInverter.getDeviceId());
-        
-        TelemetryData telemetryData = new TelemetryData();
-        telemetryData.setSiteId(siteId);
-        telemetryData.setSolarInverters(List.of(solarInverter));
-        
-        CloudEvent event = cloudEventService.createCloudEvent(TELEMETRY_TYPE, sourceId, telemetryData);
-        sendMessage(event);
-    }
-    
-    /**
-     * 发送单个电表的遥测数据
-     * 
-     * @param siteId 站点ID
-     * @param meter 电表数据
-     */
-    public void sendMeterTelemetry(String siteId, Meter meter) {
-        log.info("Sending meter telemetry data for site: {}, device: {}", 
-                siteId, meter.getDeviceId());
-        
-        TelemetryData telemetryData = new TelemetryData();
-        telemetryData.setSiteId(siteId);
-        telemetryData.setMeters(List.of(meter));
-        
-        CloudEvent event = cloudEventService.createCloudEvent(TELEMETRY_TYPE, sourceId, telemetryData);
-        sendMessage(event);
     }
     
     /**

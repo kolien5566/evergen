@@ -20,6 +20,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.neovolt.evergen.model.bytewatt.ByteWattResponse;
 import com.neovolt.evergen.model.bytewatt.RunningData;
 import com.neovolt.evergen.model.bytewatt.SystemInfo;
+import com.neovolt.evergen.model.bytewatt.SystemListResponse;
 import com.neovolt.evergen.model.site.HybridInverter;
 import com.neovolt.evergen.model.site.Meter;
 import com.neovolt.evergen.model.site.SiteStaticData;
@@ -35,7 +36,6 @@ import lombok.extern.slf4j.Slf4j;
 public class ByteWattService {
 
     private final RestTemplate restTemplate;
-    private final ObjectMapper objectMapper;
 
     @Value("${bytewatt.api.base-url}")
     private String baseUrl;
@@ -49,8 +49,7 @@ public class ByteWattService {
     @Value("${bytewatt.api.group-key}")
     private String groupKey;
 
-    public ByteWattService(ObjectMapper objectMapper, RestTemplate restTemplate) {
-        this.objectMapper = objectMapper;
+    public ByteWattService(RestTemplate restTemplate) {
         this.restTemplate = restTemplate;
     }
 
@@ -111,20 +110,21 @@ public class ByteWattService {
             Map<String, Object> requestBody = createAuthParams();
             requestBody.put("page_index", 1);
             requestBody.put("page_size", 100);  // 获取足够多的系统信息
-
+            
             String url = baseUrl + "/Open/ESS/GetSystemList";
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_JSON);
             HttpEntity<Map<String, Object>> entity = new HttpEntity<>(requestBody, headers);
             
-            ResponseEntity<ByteWattResponse<List<SystemInfo>>> response = restTemplate.exchange(
+            ResponseEntity<ByteWattResponse<SystemListResponse>> response = restTemplate.exchange(
                 url,
                 HttpMethod.POST,
                 entity,
-                new ParameterizedTypeReference<ByteWattResponse<List<SystemInfo>>>() {}
+                new ParameterizedTypeReference<ByteWattResponse<SystemListResponse>>() {}
             );
             
-            return response.getBody() != null ? response.getBody().getData() : new ArrayList<>();
+            return response.getBody() != null && response.getBody().getData() != null ? 
+                   response.getBody().getData().getSystems() : new ArrayList<>();
         } catch (Exception e) {
             log.error("Error getting system list: {}", e.getMessage());
             return new ArrayList<>();
