@@ -9,6 +9,8 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
+import com.amazonaws.services.sqs.AmazonSQS;
+import com.amazonaws.services.sqs.model.SendMessageRequest;
 import com.neovolt.evergen.model.queue.TelemetryData;
 import com.neovolt.evergen.model.site.BatteryInverter;
 import com.neovolt.evergen.model.site.HybridInverter;
@@ -28,10 +30,13 @@ import lombok.extern.slf4j.Slf4j;
 public class TelemetryService {
 
     private final CloudEventService cloudEventService;
-    private final SqsService sqsService;
+    private final AmazonSQS sqsClient;
     
     @Value("${source.id:urn:com.neovolt.evergen.device}")
     private String sourceId;
+    
+    @Value("${sqs.queues.telemetry}")
+    private String telemetryQueueUrl;
     
     private static final String TELEMETRY_TYPE = "com.evergen.energy.telemetry.v1";
 
@@ -95,31 +100,7 @@ public class TelemetryService {
     private List<BatteryInverter> collectBatteryInverterData(String siteId) {
         // TODO: 实现从设备接口获取电池逆变器数据
         // 这里只是模拟返回一个电池逆变器数据
-        List<BatteryInverter> batteryInverters = new ArrayList<>();
-        
-        BatteryInverter batteryInverter = new BatteryInverter();
-        batteryInverter.setDeviceId("battery-inverter-001");
-        batteryInverter.setDeviceTime(LocalDateTime.now().truncatedTo(ChronoUnit.SECONDS));
-        batteryInverter.setBatteryPowerW(1000);
-        batteryInverter.setMeterPowerW(2000);
-        batteryInverter.setSolarPowerW(3000);
-        batteryInverter.setBatteryReactivePowerVar(100);
-        batteryInverter.setSolarReactivePowerVar(200);
-        batteryInverter.setMeterReactivePowerVar(300);
-        batteryInverter.setGridVoltage1V(230.5);
-        batteryInverter.setGridFrequencyHz(50.0);
-        batteryInverter.setCumulativeBatteryChargeEnergyWh(10000.0);
-        batteryInverter.setCumulativeBatteryDischargeEnergyWh(8000.0);
-        batteryInverter.setCumulativePvGenerationWh(15000.0);
-        batteryInverter.setCumulativeGridImportWh(5000.0);
-        batteryInverter.setCumulativeGridExportWh(3000.0);
-        batteryInverter.setStateOfCharge(0.8);
-        batteryInverter.setStateOfHealth(0.95);
-        batteryInverter.setMaxChargePowerW(5000);
-        batteryInverter.setMaxDischargePowerW(5000);
-        
-        batteryInverters.add(batteryInverter);
-        return batteryInverters;
+        return new ArrayList<>();
     }
     
     /**
@@ -131,7 +112,30 @@ public class TelemetryService {
     private List<HybridInverter> collectHybridInverterData(String siteId) {
         // TODO: 实现从设备接口获取混合逆变器数据
         // 这里只是返回空列表，实际中需要实现
-        return new ArrayList<>();
+        List<HybridInverter> hybridInverters = new ArrayList<>();
+        
+        HybridInverter hybridInverter = new HybridInverter();
+        hybridInverter.setDeviceId("battery-inverter-001");
+        hybridInverter.setDeviceTime(LocalDateTime.now().truncatedTo(ChronoUnit.SECONDS));
+        hybridInverter.setBatteryPowerW(1000);
+        hybridInverter.setMeterPowerW(2000);
+        hybridInverter.setSolarPowerW(3000);
+        hybridInverter.setBatteryReactivePowerVar(100);
+        hybridInverter.setMeterReactivePowerVar(300);
+        hybridInverter.setGridVoltage1V(230.5);
+        hybridInverter.setGridFrequencyHz(50.0);
+        hybridInverter.setCumulativeBatteryChargeEnergyWh(10000.0);
+        hybridInverter.setCumulativeBatteryDischargeEnergyWh(8000.0);
+        hybridInverter.setCumulativePvGenerationWh(15000.0);
+        hybridInverter.setCumulativeGridImportWh(5000.0);
+        hybridInverter.setCumulativeGridExportWh(3000.0);
+        hybridInverter.setStateOfCharge(0.8);
+        hybridInverter.setStateOfHealth(0.95);
+        hybridInverter.setMaxChargePowerW(5000);
+        hybridInverter.setMaxDischargePowerW(5000);
+        
+        hybridInverters.add(hybridInverter);
+        return hybridInverters;
     }
     
     /**
@@ -186,7 +190,7 @@ public class TelemetryService {
         
         // 创建CloudEvent并发送
         CloudEvent event = cloudEventService.createCloudEvent(TELEMETRY_TYPE, sourceId, telemetryData);
-        sqsService.sendTelemetryMessage(event);
+        sendMessage(event);
         
         log.debug("Telemetry data sent successfully for site: {}", siteId);
     }
@@ -206,7 +210,7 @@ public class TelemetryService {
         telemetryData.setBatteryInverters(List.of(batteryInverter));
         
         CloudEvent event = cloudEventService.createCloudEvent(TELEMETRY_TYPE, sourceId, telemetryData);
-        sqsService.sendTelemetryMessage(event);
+        sendMessage(event);
     }
     
     /**
@@ -224,7 +228,7 @@ public class TelemetryService {
         telemetryData.setHybridInverters(List.of(hybridInverter));
         
         CloudEvent event = cloudEventService.createCloudEvent(TELEMETRY_TYPE, sourceId, telemetryData);
-        sqsService.sendTelemetryMessage(event);
+        sendMessage(event);
     }
     
     /**
@@ -242,7 +246,7 @@ public class TelemetryService {
         telemetryData.setSolarInverters(List.of(solarInverter));
         
         CloudEvent event = cloudEventService.createCloudEvent(TELEMETRY_TYPE, sourceId, telemetryData);
-        sqsService.sendTelemetryMessage(event);
+        sendMessage(event);
     }
     
     /**
@@ -260,6 +264,26 @@ public class TelemetryService {
         telemetryData.setMeters(List.of(meter));
         
         CloudEvent event = cloudEventService.createCloudEvent(TELEMETRY_TYPE, sourceId, telemetryData);
-        sqsService.sendTelemetryMessage(event);
+        sendMessage(event);
+    }
+    
+    /**
+     * 发送消息到SQS队列
+     *
+     * @param event CloudEvent事件
+     */
+    private void sendMessage(CloudEvent event) {
+        try {
+            String messageBody = cloudEventService.serializeToString(event);
+            SendMessageRequest sendMessageRequest = new SendMessageRequest()
+                    .withQueueUrl(telemetryQueueUrl)
+                    .withMessageBody(messageBody);
+            
+            sqsClient.sendMessage(sendMessageRequest);
+            log.info("Telemetry message sent to queue: {}", telemetryQueueUrl);
+        } catch (Exception e) {
+            log.error("Failed to send telemetry message to queue {}: {}", telemetryQueueUrl, e.getMessage());
+            throw new RuntimeException("Failed to send telemetry message to SQS", e);
+        }
     }
 }
