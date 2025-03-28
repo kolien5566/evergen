@@ -32,6 +32,7 @@ public class CommandService {
 
     private final CloudEventService cloudEventService;
     private final AmazonSQS sqsClient;
+    private final ByteWattService byteWattService;
     
     @Value("${sqs.queues.command}")
     private String commandQueueUrl;
@@ -149,21 +150,45 @@ public class CommandService {
         log.info("处理设备上线请求，序列号: {}", serialNumber);
         
         try {
-            // TODO: 实现设备上线逻辑
-            // 1. 验证序列号是否有效
-            // 2. 检查设备是否在线
-            // 3. 获取设备静态数据
+            // 1. 调用ByteWatt API绑定SN
+            boolean bindResult = byteWattService.bindSn(serialNumber);
+            if (!bindResult) {
+                throw new RuntimeException("绑定SN失败");
+            }
+            
+            // 2. 调用ByteWatt API添加SN到组
+            boolean addResult = byteWattService.addSnToGroup(serialNumber);
+            if (!addResult) {
+                throw new RuntimeException("添加SN到组失败");
+            }
+            
+            // 获取系统信息用于构建响应
+            List<com.neovolt.evergen.model.bytewatt.SystemInfo> systems = byteWattService.getSystemList();
+            com.neovolt.evergen.model.bytewatt.SystemInfo systemInfo = null;
+            
+            for (com.neovolt.evergen.model.bytewatt.SystemInfo system : systems) {
+                if (serialNumber.equals(system.getSysSn())) {
+                    systemInfo = system;
+                    break;
+                }
+            }
             
             // 创建响应数据
             OnboardingResponseData responseData = new OnboardingResponseData();
             responseData.setSerialNumber(serialNumber);
-            responseData.setDeviceId("device-" + serialNumber); // 示例设备ID生成
+            responseData.setDeviceId(serialNumber); // 使用序列号作为设备ID
             responseData.setConnectionStatus(OnboardingResponseData.CONNECTION_STATUS_CONNECTED);
             
-            // 设置站点静态数据（实际应从数据库或设备获取）
-            SiteStaticData siteStaticData = new SiteStaticData();
-            siteStaticData.setSiteId("site-001");
-            responseData.setSiteStaticData(siteStaticData);
+            // 设置站点静态数据
+            if (systemInfo != null) {
+                SiteStaticData siteStaticData = byteWattService.convertToSiteStaticData(systemInfo);
+                responseData.setSiteStaticData(siteStaticData);
+            } else {
+                // 如果没有找到系统信息，创建一个基本的站点数据
+                SiteStaticData siteStaticData = new SiteStaticData();
+                siteStaticData.setSiteId(serialNumber);
+                responseData.setSiteStaticData(siteStaticData);
+            }
             
             // 发送响应
             CloudEvent responseEvent = cloudEventService.createCloudEvent(
@@ -202,14 +227,22 @@ public class CommandService {
         log.info("处理设备下线请求，序列号: {}", serialNumber);
         
         try {
-            // TODO: 实现设备下线逻辑
-            // 1. 验证序列号是否有效
-            // 2. 从系统中移除设备
+            // 1. 调用ByteWatt API从组中移除SN
+            boolean removeResult = byteWattService.removeSnFromGroup(serialNumber);
+            if (!removeResult) {
+                throw new RuntimeException("从组中移除SN失败");
+            }
+            
+            // 2. 调用ByteWatt API解绑SN
+            boolean unbindResult = byteWattService.unbindSn(serialNumber);
+            if (!unbindResult) {
+                throw new RuntimeException("解绑SN失败");
+            }
             
             // 创建响应数据
             OffboardingResponseData responseData = new OffboardingResponseData();
             responseData.setSerialNumber(serialNumber);
-            responseData.setDeviceId("device-" + serialNumber); // 示例设备ID
+            responseData.setDeviceId(serialNumber); // 使用序列号作为设备ID
             responseData.setConnectionStatus(OffboardingResponseData.CONNECTION_STATUS_NOT_CONNECTED);
             
             // 发送响应
@@ -358,8 +391,19 @@ public class CommandService {
      * @param durationSeconds 持续时间（秒）
      */
     private void executeSelfConsumptionCommand(String deviceId, int durationSeconds) {
-        // TODO: 实现设备自消费模式控制
-        log.info("Self consumption mode activated for device: {} for {} seconds", deviceId, durationSeconds);
+        // 调用ByteWatt API发送自消费模式命令
+        // 控制模式1: 自消费模式
+        int controlMode = 1;
+        String parameter = ""; // 自消费模式不需要额外参数
+        int status = 1; // 1表示开始
+        
+        boolean result = byteWattService.sendDispatchCommand(deviceId, controlMode, durationSeconds, parameter, status);
+        
+        if (result) {
+            log.info("Self consumption mode activated for device: {} for {} seconds", deviceId, durationSeconds);
+        } else {
+            log.error("Failed to activate self consumption mode for device: {}", deviceId);
+        }
     }
     
     /**
@@ -369,8 +413,19 @@ public class CommandService {
      * @param durationSeconds 持续时间（秒）
      */
     private void executeChargeOnlySelfConsumptionCommand(String deviceId, int durationSeconds) {
-        // TODO: 实现设备仅充电自消费模式控制
-        log.info("Charge-only self consumption mode activated for device: {} for {} seconds", deviceId, durationSeconds);
+        // 调用ByteWatt API发送仅充电自消费模式命令
+        // 控制模式2: 仅充电自消费模式
+        int controlMode = 2;
+        String parameter = ""; // 仅充电自消费模式不需要额外参数
+        int status = 1; // 1表示开始
+        
+        boolean result = byteWattService.sendDispatchCommand(deviceId, controlMode, durationSeconds, parameter, status);
+        
+        if (result) {
+            log.info("Charge-only self consumption mode activated for device: {} for {} seconds", deviceId, durationSeconds);
+        } else {
+            log.error("Failed to activate charge-only self consumption mode for device: {}", deviceId);
+        }
     }
     
     /**
@@ -381,8 +436,19 @@ public class CommandService {
      * @param durationSeconds 持续时间（秒）
      */
     private void executeChargeCommand(String deviceId, int powerW, int durationSeconds) {
-        // TODO: 实现设备充电控制
-        log.info("Charging device: {} at {}W for {} seconds", deviceId, powerW, durationSeconds);
+        // 调用ByteWatt API发送充电命令
+        // 控制模式3: 充电模式
+        int controlMode = 3;
+        String parameter = String.valueOf(powerW); // 参数为充电功率
+        int status = 1; // 1表示开始
+        
+        boolean result = byteWattService.sendDispatchCommand(deviceId, controlMode, durationSeconds, parameter, status);
+        
+        if (result) {
+            log.info("Charging device: {} at {}W for {} seconds", deviceId, powerW, durationSeconds);
+        } else {
+            log.error("Failed to start charging for device: {}", deviceId);
+        }
     }
     
     /**
@@ -393,8 +459,19 @@ public class CommandService {
      * @param durationSeconds 持续时间（秒）
      */
     private void executeDischargeCommand(String deviceId, int powerW, int durationSeconds) {
-        // TODO: 实现设备放电控制
-        log.info("Discharging device: {} at {}W for {} seconds", deviceId, powerW, durationSeconds);
+        // 调用ByteWatt API发送放电命令
+        // 控制模式4: 放电模式
+        int controlMode = 4;
+        String parameter = String.valueOf(powerW); // 参数为放电功率
+        int status = 1; // 1表示开始
+        
+        boolean result = byteWattService.sendDispatchCommand(deviceId, controlMode, durationSeconds, parameter, status);
+        
+        if (result) {
+            log.info("Discharging device: {} at {}W for {} seconds", deviceId, powerW, durationSeconds);
+        } else {
+            log.error("Failed to start discharging for device: {}", deviceId);
+        }
     }
     
     /**
@@ -405,9 +482,20 @@ public class CommandService {
      * @param durationSeconds 持续时间（秒）
      */
     private void executePowerFactorCorrectionCommand(String deviceId, double targetPowerFactor, int durationSeconds) {
-        // TODO: 实现设备功率因数校正控制
-        log.info("Setting power factor correction for device: {} to {} for {} seconds", 
-                deviceId, targetPowerFactor, durationSeconds);
+        // 调用ByteWatt API发送功率因数校正命令
+        // 控制模式5: 功率因数校正模式
+        int controlMode = 5;
+        String parameter = String.valueOf(targetPowerFactor); // 参数为目标功率因数
+        int status = 1; // 1表示开始
+        
+        boolean result = byteWattService.sendDispatchCommand(deviceId, controlMode, durationSeconds, parameter, status);
+        
+        if (result) {
+            log.info("Setting power factor correction for device: {} to {} for {} seconds", 
+                    deviceId, targetPowerFactor, durationSeconds);
+        } else {
+            log.error("Failed to set power factor correction for device: {}", deviceId);
+        }
     }
     
     /**
@@ -418,9 +506,20 @@ public class CommandService {
      * @param durationSeconds 持续时间（秒）
      */
     private void executeInjectReactivePowerCommand(String deviceId, int reactivePowerVar, int durationSeconds) {
-        // TODO: 实现设备注入无功功率控制
-        log.info("Injecting reactive power for device: {} at {}VAR for {} seconds", 
-                deviceId, reactivePowerVar, durationSeconds);
+        // 调用ByteWatt API发送注入无功功率命令
+        // 控制模式6: 注入无功功率模式
+        int controlMode = 6;
+        String parameter = String.valueOf(reactivePowerVar); // 参数为无功功率值
+        int status = 1; // 1表示开始
+        
+        boolean result = byteWattService.sendDispatchCommand(deviceId, controlMode, durationSeconds, parameter, status);
+        
+        if (result) {
+            log.info("Injecting reactive power for device: {} at {}VAR for {} seconds", 
+                    deviceId, reactivePowerVar, durationSeconds);
+        } else {
+            log.error("Failed to inject reactive power for device: {}", deviceId);
+        }
     }
     
     /**
@@ -431,8 +530,19 @@ public class CommandService {
      * @param durationSeconds 持续时间（秒）
      */
     private void executeAbsorbReactivePowerCommand(String deviceId, int reactivePowerVar, int durationSeconds) {
-        // TODO: 实现设备吸收无功功率控制
-        log.info("Absorbing reactive power for device: {} at {}VAR for {} seconds", 
-                deviceId, reactivePowerVar, durationSeconds);
+        // 调用ByteWatt API发送吸收无功功率命令
+        // 控制模式7: 吸收无功功率模式
+        int controlMode = 7;
+        String parameter = String.valueOf(reactivePowerVar); // 参数为无功功率值
+        int status = 1; // 1表示开始
+        
+        boolean result = byteWattService.sendDispatchCommand(deviceId, controlMode, durationSeconds, parameter, status);
+        
+        if (result) {
+            log.info("Absorbing reactive power for device: {} at {}VAR for {} seconds", 
+                    deviceId, reactivePowerVar, durationSeconds);
+        } else {
+            log.error("Failed to absorb reactive power for device: {}", deviceId);
+        }
     }
 }
