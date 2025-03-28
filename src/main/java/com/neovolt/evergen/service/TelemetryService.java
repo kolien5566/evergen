@@ -53,8 +53,8 @@ public class TelemetryService {
     public void scheduledTelemetryCollection() {
         LocalDateTime now = LocalDateTime.now();
         
-        // 只在整5分钟时间点发送数据
-        if (now.getMinute() % 5 == 0) {
+        // 只在整1分钟时间点发送数据
+        if (now.getMinute() % 1 == 0) {
             log.info("执行定时遥测数据收集和发送，时间: {}", now);
             collectAndSendTelemetry();
         }
@@ -168,12 +168,21 @@ public class TelemetryService {
         
         // 获取所有运行数据
         List<com.neovolt.evergen.model.bytewatt.RunningData> runningDataList = byteWattService.getGroupRunningData();
+        List<SystemInfo> systems = byteWattService.getSystemList();
+        SystemInfo systemInfo = null;
         
+        // 查找对应站点的系统信息
+        for (SystemInfo system : systems) {
+            if (siteId.equals(system.getSysSn())) {
+                systemInfo = system;
+                break;
+            }
+        }
         // 查找对应站点的运行数据
         for (com.neovolt.evergen.model.bytewatt.RunningData runningData : runningDataList) {
             if (siteId.equals(runningData.getSysSn())) {
                 // 转换为Meter对象
-                Meter meter = byteWattService.convertToMeter(runningData);
+                Meter meter = byteWattService.convertToMeter(runningData, systemInfo);
                 meters.add(meter);
                 log.info("收集到站点 {} 的电表数据", siteId);
                 break;

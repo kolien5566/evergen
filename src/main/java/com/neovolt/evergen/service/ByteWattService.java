@@ -15,8 +15,6 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
-
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.neovolt.evergen.model.bytewatt.ByteWattResponse;
 import com.neovolt.evergen.model.bytewatt.RunningData;
 import com.neovolt.evergen.model.bytewatt.SystemInfo;
@@ -359,7 +357,7 @@ public class ByteWattService {
      * @param runningData ByteWatt运行数据
      * @return Meter对象
      */
-    public Meter convertToMeter(RunningData runningData) {
+    public Meter convertToMeter(RunningData runningData, SystemInfo systemInfo) {
         // 计算总电表功率
         Integer meterPower = calculateTotalMeterPower(runningData);
         
@@ -367,7 +365,7 @@ public class ByteWattService {
         Meter meter = new Meter();
         try {
             // 设备信息
-            meter.setDeviceId(runningData.getSysSn() + "-meter");
+            meter.setDeviceId(runningData.getSysSn() + systemInfo.getMeterModel());
             meter.setDeviceTime(runningData.getUploadDatetime());
             
             // 电表功率
