@@ -1,7 +1,6 @@
 package com.neovolt.evergen.service;
 
 import java.time.LocalDateTime;
-import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -11,6 +10,7 @@ import org.springframework.stereotype.Service;
 
 import com.amazonaws.services.sqs.AmazonSQS;
 import com.amazonaws.services.sqs.model.SendMessageRequest;
+import com.neovolt.evergen.model.bytewatt.SystemInfo;
 import com.neovolt.evergen.model.queue.TelemetryData;
 import com.neovolt.evergen.model.site.BatteryInverter;
 import com.neovolt.evergen.model.site.HybridInverter;
@@ -18,7 +18,6 @@ import com.neovolt.evergen.model.site.Meter;
 import com.neovolt.evergen.model.site.SolarInverter;
 
 import io.cloudevents.CloudEvent;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
 /**
@@ -26,11 +25,17 @@ import lombok.extern.slf4j.Slf4j;
  */
 @Service
 @Slf4j
-@RequiredArgsConstructor
 public class TelemetryService {
 
     private final CloudEventService cloudEventService;
     private final AmazonSQS sqsClient;
+    private final ByteWattService byteWattService;
+    
+    public TelemetryService(CloudEventService cloudEventService, AmazonSQS sqsClient, ByteWattService byteWattService) {
+        this.cloudEventService = cloudEventService;
+        this.sqsClient = sqsClient;
+        this.byteWattService = byteWattService;
+    }
     
     @Value("${source.id:urn:com.neovolt.evergen.device}")
     private String sourceId;
@@ -90,7 +95,23 @@ public class TelemetryService {
     private List<String> getAllSiteIds() {
         // 站点ID就是hybrid inverter sn,这里的逻辑是一个站点只有一个混合逆变器和电表
         List<String> siteIds = new ArrayList<>();
-        // 这里要从Bytewatt api数据了
+        
+        // 从ByteWatt API获取系统列表
+        List<SystemInfo> systems = byteWattService.getSystemList();
+        
+        // 提取系统SN作为站点ID
+        for (SystemInfo system : systems) {
+            if (system.getSysSn() != null) {
+                siteIds.add(system.getSysSn());
+            }
+        }
+        
+        if (siteIds.isEmpty()) {
+            log.warn("未获取到任何站点ID，请检查ByteWatt API配置");
+        } else {
+            log.info("获取到 {} 个站点ID", siteIds.size());
+        }
+        
         return siteIds;
     }
     
@@ -102,28 +123,37 @@ public class TelemetryService {
      */
     private List<HybridInverter> collectHybridInverterData(String siteId) {
         List<HybridInverter> hybridInverters = new ArrayList<>();
-        // 当前的逻辑是一个站点下只有一个混合逆变器
-        HybridInverter hybridInverter = new HybridInverter();
-        hybridInverter.setDeviceId("battery-inverter-001");
-        hybridInverter.setDeviceTime(LocalDateTime.now().truncatedTo(ChronoUnit.SECONDS));
-        hybridInverter.setBatteryPowerW(1000);
-        hybridInverter.setMeterPowerW(2000);
-        hybridInverter.setSolarPowerW(3000);
-        hybridInverter.setBatteryReactivePowerVar(100);
-        hybridInverter.setMeterReactivePowerVar(300);
-        hybridInverter.setGridVoltage1V(230.5);
-        hybridInverter.setGridFrequencyHz(50.0);
-        hybridInverter.setCumulativeBatteryChargeEnergyWh(10000.0);
-        hybridInverter.setCumulativeBatteryDischargeEnergyWh(8000.0);
-        hybridInverter.setCumulativePvGenerationWh(15000.0);
-        hybridInverter.setCumulativeGridImportWh(5000.0);
-        hybridInverter.setCumulativeGridExportWh(3000.0);
-        hybridInverter.setStateOfCharge(0.8);
-        hybridInverter.setStateOfHealth(0.95);
-        hybridInverter.setMaxChargePowerW(5000);
-        hybridInverter.setMaxDischargePowerW(5000);
         
-        hybridInverters.add(hybridInverter);
+        // 获取所有运行数据
+        List<com.neovolt.evergen.model.bytewatt.RunningData> runningDataList = byteWattService.getGroupRunningData();
+        
+        // 获取系统信息
+        List<SystemInfo> systems = byteWattService.getSystemList();
+        SystemInfo systemInfo = null;
+        
+        // 查找对应站点的系统信息
+        for (SystemInfo system : systems) {
+            if (siteId.equals(system.getSysSn())) {
+                systemInfo = system;
+                break;
+            }
+        }
+        
+        // 查找对应站点的运行数据
+        for (com.neovolt.evergen.model.bytewatt.RunningData runningData : runningDataList) {
+            if (siteId.equals(runningData.getSysSn())) {
+                // 转换为HybridInverter对象
+                HybridInverter inverter = byteWattService.convertToHybridInverter(runningData, systemInfo);
+                hybridInverters.add(inverter);
+                log.info("收集到站点 {} 的混合逆变器数据", siteId);
+                break;
+            }
+        }
+        
+        if (hybridInverters.isEmpty()) {
+            log.warn("未找到站点 {} 的混合逆变器数据", siteId);
+        }
+        
         return hybridInverters;
     }
     
@@ -135,20 +165,25 @@ public class TelemetryService {
      */
     private List<Meter> collectMeterData(String siteId) {
         List<Meter> meters = new ArrayList<>();
-        // 当前的逻辑是一个站点下只有一个电表
-        Meter meter = new Meter();
-        meter.setDeviceId(siteId);
-        meter.setDeviceTime(LocalDateTime.now().truncatedTo(ChronoUnit.SECONDS));
-        meter.setPowerW(0);
-        meter.setReactivePowerVar(0);
-        meter.setGridVoltage1V(0.0);
-        meter.setGridVoltage2V(0.0);
-        meter.setGridVoltage3V(0.0);
-        meter.setGridFrequencyHz(0.0);
-        meter.setCumulativeGridImportWh(0.0);
-        meter.setCumulativeGridExportWh(0.0);
-
-        meters.add(meter);
+        
+        // 获取所有运行数据
+        List<com.neovolt.evergen.model.bytewatt.RunningData> runningDataList = byteWattService.getGroupRunningData();
+        
+        // 查找对应站点的运行数据
+        for (com.neovolt.evergen.model.bytewatt.RunningData runningData : runningDataList) {
+            if (siteId.equals(runningData.getSysSn())) {
+                // 转换为Meter对象
+                Meter meter = byteWattService.convertToMeter(runningData);
+                meters.add(meter);
+                log.info("收集到站点 {} 的电表数据", siteId);
+                break;
+            }
+        }
+        
+        if (meters.isEmpty()) {
+            log.warn("未找到站点 {} 的电表数据", siteId);
+        }
+        
         return meters;
     }
 
