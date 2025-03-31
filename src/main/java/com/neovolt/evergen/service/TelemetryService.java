@@ -10,6 +10,7 @@ import org.springframework.stereotype.Service;
 
 import com.amazonaws.services.sqs.AmazonSQS;
 import com.amazonaws.services.sqs.model.SendMessageRequest;
+import com.neovolt.evergen.model.bytewatt.RunningData;
 import com.neovolt.evergen.model.bytewatt.SystemInfo;
 import com.neovolt.evergen.model.queue.TelemetryData;
 import com.neovolt.evergen.model.site.BatteryInverter;
@@ -54,7 +55,7 @@ public class TelemetryService {
         LocalDateTime now = LocalDateTime.now();
         
         // 只在整1分钟时间点发送数据
-        if (now.getMinute() % 1 == 0) {
+        if (now.getMinute() % 5 == 0) {
             log.info("执行定时遥测数据收集和发送，时间: {}", now);
             collectAndSendTelemetry();
         }
@@ -167,7 +168,7 @@ public class TelemetryService {
         List<Meter> meters = new ArrayList<>();
         
         // 获取所有运行数据
-        List<com.neovolt.evergen.model.bytewatt.RunningData> runningDataList = byteWattService.getGroupRunningData();
+        List<RunningData> runningDataList = byteWattService.getGroupRunningData();
         List<SystemInfo> systems = byteWattService.getSystemList();
         SystemInfo systemInfo = null;
         
@@ -179,7 +180,7 @@ public class TelemetryService {
             }
         }
         // 查找对应站点的运行数据
-        for (com.neovolt.evergen.model.bytewatt.RunningData runningData : runningDataList) {
+        for (RunningData runningData : runningDataList) {
             if (siteId.equals(runningData.getSysSn())) {
                 // 转换为Meter对象
                 Meter meter = byteWattService.convertToMeter(runningData, systemInfo);

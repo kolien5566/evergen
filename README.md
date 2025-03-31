@@ -7,8 +7,10 @@
 该项目采用Spring Boot框架开发，主要组件包括：
 
 - `CloudEventService`: 用于创建、序列化和反序列化CloudEvent格式的消息
-- `SqsService`: 用于与AWS SQS队列交互，发送和接收消息
-- `MessageProcessor`: 用于处理不同类型的消息，包括命令、遥测和设备上下线请求
+- `BytewattService`: 设备数据的来源，贝瓦的apicloud
+- `TelemetryService`: 向sqs上传数据的消息
+- `CommandService`: 从sqs取下发指令的消息
+- 请求
 
 ## 支持的消息类型
 

@@ -11,6 +11,7 @@ import com.amazonaws.services.sqs.model.DeleteMessageRequest;
 import com.amazonaws.services.sqs.model.Message;
 import com.amazonaws.services.sqs.model.ReceiveMessageRequest;
 import com.amazonaws.services.sqs.model.SendMessageRequest;
+import com.neovolt.evergen.model.bytewatt.SystemInfo;
 import com.neovolt.evergen.model.queue.CommandData;
 import com.neovolt.evergen.model.queue.OffboardingRequestData;
 import com.neovolt.evergen.model.queue.OffboardingResponseData;
@@ -163,10 +164,10 @@ public class CommandService {
             }
             
             // 获取系统信息用于构建响应
-            List<com.neovolt.evergen.model.bytewatt.SystemInfo> systems = byteWattService.getSystemList();
-            com.neovolt.evergen.model.bytewatt.SystemInfo systemInfo = null;
+            List<SystemInfo> systems = byteWattService.getSystemList();
+            SystemInfo systemInfo = null;
             
-            for (com.neovolt.evergen.model.bytewatt.SystemInfo system : systems) {
+            for (SystemInfo system : systems) {
                 if (serialNumber.equals(system.getSysSn())) {
                     systemInfo = system;
                     break;
