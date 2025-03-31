@@ -56,7 +56,7 @@ public class TelemetryService {
         
         // 只在整1分钟时间点发送数据
         if (now.getMinute() % 5 == 0) {
-            log.info("执行定时遥测数据收集和发送，时间: {}", now);
+            log.info("Execute time: {}", now);
             collectAndSendTelemetry();
         }
     }
@@ -108,9 +108,9 @@ public class TelemetryService {
         }
         
         if (siteIds.isEmpty()) {
-            log.warn("未获取到任何站点ID，请检查ByteWatt API配置");
+            log.warn("No site obtained!");
         } else {
-            log.info("获取到 {} 个站点ID", siteIds.size());
+            log.info("get {} site", siteIds.size());
         }
         
         return siteIds;
@@ -126,7 +126,7 @@ public class TelemetryService {
         List<HybridInverter> hybridInverters = new ArrayList<>();
         
         // 获取所有运行数据
-        List<com.neovolt.evergen.model.bytewatt.RunningData> runningDataList = byteWattService.getGroupRunningData();
+        List<RunningData> runningDataList = byteWattService.getGroupRunningData();
         
         // 获取系统信息
         List<SystemInfo> systems = byteWattService.getSystemList();
@@ -141,19 +141,15 @@ public class TelemetryService {
         }
         
         // 查找对应站点的运行数据
-        for (com.neovolt.evergen.model.bytewatt.RunningData runningData : runningDataList) {
+        for (RunningData runningData : runningDataList) {
             if (siteId.equals(runningData.getSysSn())) {
                 // 转换为HybridInverter对象
                 HybridInverter inverter = byteWattService.convertToHybridInverter(runningData, systemInfo);
                 hybridInverters.add(inverter);
-                log.info("收集到站点 {} 的混合逆变器数据", siteId);
                 break;
             }
         }
         
-        if (hybridInverters.isEmpty()) {
-            log.warn("未找到站点 {} 的混合逆变器数据", siteId);
-        }
         
         return hybridInverters;
     }
@@ -185,13 +181,8 @@ public class TelemetryService {
                 // 转换为Meter对象
                 Meter meter = byteWattService.convertToMeter(runningData, systemInfo);
                 meters.add(meter);
-                log.info("收集到站点 {} 的电表数据", siteId);
                 break;
             }
-        }
-        
-        if (meters.isEmpty()) {
-            log.warn("未找到站点 {} 的电表数据", siteId);
         }
         
         return meters;

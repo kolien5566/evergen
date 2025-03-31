@@ -56,7 +56,6 @@ public class CommandService {
      */
     @Scheduled(fixedRate = 10000)
     public void pollCommandQueue() {
-        log.debug("开始轮询命令队列");
         try {
             // 接收消息
             ReceiveMessageRequest receiveRequest = new ReceiveMessageRequest()
@@ -67,7 +66,7 @@ public class CommandService {
             List<Message> messages = sqsClient.receiveMessage(receiveRequest).getMessages();
             
             if (!messages.isEmpty()) {
-                log.info("收到 {} 条命令消息", messages.size());
+                log.info("get {} commands", messages.size());
                 
                 for (Message message : messages) {
                     try {
@@ -77,12 +76,12 @@ public class CommandService {
                         // 删除消息
                         deleteMessage(commandQueueUrl, message.getReceiptHandle());
                     } catch (Exception e) {
-                        log.error("处理命令消息失败: {}", e.getMessage(), e);
+                        log.error("failed to process command: {}", e.getMessage(), e);
                     }
                 }
             }
         } catch (Exception e) {
-            log.error("轮询命令队列失败: {}", e.getMessage(), e);
+            log.error("failed to poll command queue: {}", e.getMessage(), e);
         }
     }
     
@@ -97,7 +96,7 @@ public class CommandService {
             CloudEvent event = cloudEventService.deserializeFromString(message.getBody());
             String eventType = event.getType();
             
-            log.info("处理消息，类型: {}", eventType);
+            log.info("message type: {}", eventType);
             
             // 根据消息类型分发处理
             if (COMMAND_TYPE.equals(eventType)) {
@@ -113,11 +112,11 @@ public class CommandService {
                 OffboardingRequestData requestData = cloudEventService.extractData(event, OffboardingRequestData.class);
                 processOffboardingRequest(requestData);
             } else {
-                log.warn("未知的消息类型: {}", eventType);
+                log.warn("unknown message type: {}", eventType);
             }
         } catch (Exception e) {
-            log.error("解析或处理消息失败: {}", e.getMessage(), e);
-            throw new RuntimeException("处理消息失败", e);
+            log.error("failed to process message: {}", e.getMessage(), e);
+            throw new RuntimeException(e);
         }
     }
     
@@ -134,10 +133,10 @@ public class CommandService {
                     .withReceiptHandle(receiptHandle);
             
             sqsClient.deleteMessage(deleteRequest);
-            log.debug("已删除消息");
+            log.debug("message deleted");
         } catch (Exception e) {
-            log.error("删除消息失败: {}", e.getMessage(), e);
-            throw new RuntimeException("删除消息失败", e);
+            log.error("failed to delete message: {}", e.getMessage(), e);
+            throw new RuntimeException(e);
         }
     }
     
@@ -148,19 +147,19 @@ public class CommandService {
      */
     private void processOnboardingRequest(OnboardingRequestData requestData) {
         String serialNumber = requestData.getSerialNumber();
-        log.info("处理设备上线请求，序列号: {}", serialNumber);
+        log.info("onboarding sn: {}", serialNumber);
         
         try {
             // 1. 调用ByteWatt API绑定SN
             boolean bindResult = byteWattService.bindSn(serialNumber);
             if (!bindResult) {
-                throw new RuntimeException("绑定SN失败");
+                throw new RuntimeException("failed to bind sn");
             }
             
             // 2. 调用ByteWatt API添加SN到组
             boolean addResult = byteWattService.addSnToGroup(serialNumber);
             if (!addResult) {
-                throw new RuntimeException("添加SN到组失败");
+                throw new RuntimeException("failed to add group");
             }
             
             // 获取系统信息用于构建响应
@@ -199,15 +198,16 @@ public class CommandService {
             
             sendMessage(telemetryQueueUrl, responseEvent);
             
-            log.info("设备上线响应已发送，序列号: {}", serialNumber);
+            log.info("succeed to onboarding，sn: {}", serialNumber);
         } catch (Exception e) {
-            log.error("处理设备上线请求失败，序列号: {}, 错误: {}", serialNumber, e.getMessage(), e);
+            log.error("fail to onboarding，sn:  {}, error: {}", serialNumber, e.getMessage(), e);
             
             // 发送失败响应
             OnboardingResponseData failureResponse = new OnboardingResponseData();
             failureResponse.setSerialNumber(serialNumber);
+            failureResponse.setDeviceId(serialNumber);
             failureResponse.setConnectionStatus(OnboardingResponseData.CONNECTION_STATUS_NOT_CONNECTED);
-            failureResponse.setErrorReason(OnboardingResponseData.ERROR_REASON_DEVICE_OFFLINE);
+            failureResponse.setErrorReason(OnboardingResponseData.ERROR_REASON_WRONG_SERIAL);
             
             CloudEvent responseEvent = cloudEventService.createCloudEvent(
                     ONBOARDING_RESPONSE_TYPE, 
@@ -225,26 +225,26 @@ public class CommandService {
      */
     private void processOffboardingRequest(OffboardingRequestData requestData) {
         String serialNumber = requestData.getSerialNumber();
-        log.info("处理设备下线请求，序列号: {}", serialNumber);
+        log.info("offboarding sn: {}", serialNumber);
         
         try {
             // 1. 调用ByteWatt API从组中移除SN
             boolean removeResult = byteWattService.removeSnFromGroup(serialNumber);
             if (!removeResult) {
-                throw new RuntimeException("从组中移除SN失败");
+                throw new RuntimeException("fail to remove group");
             }
             
             // 2. 调用ByteWatt API解绑SN
             boolean unbindResult = byteWattService.unbindSn(serialNumber);
             if (!unbindResult) {
-                throw new RuntimeException("解绑SN失败");
+                throw new RuntimeException("fail to unbind sn");
             }
             
             // 创建响应数据
             OffboardingResponseData responseData = new OffboardingResponseData();
             responseData.setSerialNumber(serialNumber);
             responseData.setDeviceId(serialNumber); // 使用序列号作为设备ID
-            responseData.setConnectionStatus(OffboardingResponseData.CONNECTION_STATUS_NOT_CONNECTED);
+            responseData.setConnectionStatus(OffboardingResponseData.CONNECTION_STATUS_CONNECTED);
             
             // 发送响应
             CloudEvent responseEvent = cloudEventService.createCloudEvent(
@@ -254,15 +254,16 @@ public class CommandService {
             
             sendMessage(telemetryQueueUrl, responseEvent);
             
-            log.info("设备下线响应已发送，序列号: {}", serialNumber);
+            log.info("succeed to offboarding，sn: {}", serialNumber);
         } catch (Exception e) {
-            log.error("处理设备下线请求失败，序列号: {}, 错误: {}", serialNumber, e.getMessage(), e);
+            log.error("fail to offboarding, sn: {}, error: {}", serialNumber, e.getMessage(), e);
             
             // 发送失败响应
             OffboardingResponseData failureResponse = new OffboardingResponseData();
             failureResponse.setSerialNumber(serialNumber);
-            failureResponse.setConnectionStatus(OffboardingResponseData.CONNECTION_STATUS_CONNECTED);
-            failureResponse.setErrorReason(OffboardingResponseData.ERROR_REASON_DEVICE_OFFLINE);
+            failureResponse.setDeviceId(serialNumber);
+            failureResponse.setConnectionStatus(OffboardingResponseData.CONNECTION_STATUS_NOT_CONNECTED);
+            failureResponse.setErrorReason(OffboardingResponseData.ERROR_REASON_WRONG_SERIAL);
             
             CloudEvent responseEvent = cloudEventService.createCloudEvent(
                     OFFBOARDING_RESPONSE_TYPE, 
@@ -287,10 +288,10 @@ public class CommandService {
                     .withMessageBody(messageBody);
             
             sqsClient.sendMessage(sendMessageRequest);
-            log.info("消息已发送到队列: {}", queueUrl);
+            log.info("message sent to queue: {}", queueUrl);
         } catch (Exception e) {
-            log.error("发送消息到队列失败 {}: {}", queueUrl, e.getMessage(), e);
-            throw new RuntimeException("发送消息到SQS失败", e);
+            log.error("fail to send message to {}: {}", queueUrl, e.getMessage(), e);
+            throw new RuntimeException(e);
         }
     }
 
