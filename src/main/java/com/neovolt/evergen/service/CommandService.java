@@ -305,15 +305,14 @@ public class CommandService {
         log.info("Processing command for device: {}", deviceId);
         
         try {
-            // 检查命令类型并执行相应操作
+            // 只处理实功率模式命令
             if (commandData.getRealMode() != null) {
-                // 处理实功率模式命令
                 processRealModeCommand(deviceId, commandData);
             }
             
+            // 无功功率模式命令直接忽略，只记录日志
             if (commandData.getReactiveMode() != null) {
-                // 处理无功功率模式命令
-                processReactiveModeCommand(deviceId, commandData);
+                log.info("Reactive mode command not supported, device: {}", deviceId);
             }
             
             log.info("Command processed successfully for device: {}", deviceId);
@@ -321,7 +320,6 @@ public class CommandService {
             log.error("Error executing command for device {}: {}", deviceId, e.getMessage(), e);
         }
     }
-    
     
     /**
      * 处理实功率模式命令
@@ -333,56 +331,21 @@ public class CommandService {
         if (commandData.getRealMode().getSelfConsumptionCommand() != null) {
             // 自消费模式命令
             log.info("Executing self consumption command for device: {}", deviceId);
-            // TODO: 调用设备接口执行自消费模式命令
             executeSelfConsumptionCommand(deviceId, commandData.getDurationSeconds());
         } else if (commandData.getRealMode().getChargeOnlySelfConsumptionCommand() != null) {
             // 仅充电自消费模式命令
             log.info("Executing charge-only self consumption command for device: {}", deviceId);
-            // TODO: 调用设备接口执行仅充电自消费模式命令
             executeChargeOnlySelfConsumptionCommand(deviceId, commandData.getDurationSeconds());
         } else if (commandData.getRealMode().getChargeCommand() != null) {
             // 充电命令
             int powerW = commandData.getRealMode().getChargeCommand().getPowerW();
             log.info("Executing charge command for device: {}, power: {}W", deviceId, powerW);
-            // TODO: 调用设备接口执行充电命令
             executeChargeCommand(deviceId, powerW, commandData.getDurationSeconds());
         } else if (commandData.getRealMode().getDischargeCommand() != null) {
             // 放电命令
             int powerW = commandData.getRealMode().getDischargeCommand().getPowerW();
             log.info("Executing discharge command for device: {}, power: {}W", deviceId, powerW);
-            // TODO: 调用设备接口执行放电命令
             executeDischargeCommand(deviceId, powerW, commandData.getDurationSeconds());
-        }
-    }
-    
-    /**
-     * 处理无功功率模式命令
-     *
-     * @param deviceId 设备ID
-     * @param commandData 命令数据
-     */
-    private void processReactiveModeCommand(String deviceId, CommandData commandData) {
-        if (commandData.getReactiveMode().getPowerFactorCorrection() != null) {
-            // 功率因数校正命令
-            double targetPowerFactor = commandData.getReactiveMode().getPowerFactorCorrection().getTargetPowerFactor();
-            log.info("Executing power factor correction command for device: {}, target: {}", 
-                    deviceId, targetPowerFactor);
-            // TODO: 调用设备接口执行功率因数校正命令
-            executePowerFactorCorrectionCommand(deviceId, targetPowerFactor, commandData.getDurationSeconds());
-        } else if (commandData.getReactiveMode().getInject() != null) {
-            // 注入无功功率命令
-            int reactivePowerVar = commandData.getReactiveMode().getInject().getReactivePowerVar();
-            log.info("Executing inject reactive power command for device: {}, power: {}VAR", 
-                    deviceId, reactivePowerVar);
-            // TODO: 调用设备接口执行注入无功功率命令
-            executeInjectReactivePowerCommand(deviceId, reactivePowerVar, commandData.getDurationSeconds());
-        } else if (commandData.getReactiveMode().getAbsorb() != null) {
-            // 吸收无功功率命令
-            int reactivePowerVar = commandData.getReactiveMode().getAbsorb().getReactivePowerVar();
-            log.info("Executing absorb reactive power command for device: {}, power: {}VAR", 
-                    deviceId, reactivePowerVar);
-            // TODO: 调用设备接口执行吸收无功功率命令
-            executeAbsorbReactivePowerCommand(deviceId, reactivePowerVar, commandData.getDurationSeconds());
         }
     }
     
@@ -394,9 +357,9 @@ public class CommandService {
      */
     private void executeSelfConsumptionCommand(String deviceId, int durationSeconds) {
         // 调用ByteWatt API发送自消费模式命令
-        // 控制模式1: 自消费模式
-        int controlMode = 1;
-        String parameter = ""; // 自消费模式不需要额外参数
+        // 控制模式: 自发自用
+        int controlMode = 3;
+        String parameter = "";
         int status = 1; // 1表示开始
         
         boolean result = byteWattService.sendDispatchCommand(deviceId, controlMode, durationSeconds, parameter, status);
@@ -416,9 +379,9 @@ public class CommandService {
      */
     private void executeChargeOnlySelfConsumptionCommand(String deviceId, int durationSeconds) {
         // 调用ByteWatt API发送仅充电自消费模式命令
-        // 控制模式2: 仅充电自消费模式
-        int controlMode = 2;
-        String parameter = ""; // 仅充电自消费模式不需要额外参数
+        // 控制模式: 禁止放电（仅充电）的自发自用
+        int controlMode = 1;
+        String parameter = "";
         int status = 1; // 1表示开始
         
         boolean result = byteWattService.sendDispatchCommand(deviceId, controlMode, durationSeconds, parameter, status);
@@ -439,9 +402,13 @@ public class CommandService {
      */
     private void executeChargeCommand(String deviceId, int powerW, int durationSeconds) {
         // 调用ByteWatt API发送充电命令
-        // 控制模式3: 充电模式
-        int controlMode = 3;
-        String parameter = String.valueOf(powerW); // 参数为充电功率
+        // 控制模式: 充电模式
+        int controlMode = 2;
+        
+        // 计算充电功率参数：基准值32000 - 充电功率
+        int chargePower = 32000 - powerW;
+        // SOC设为100%，发送值250（250 * 0.4% = 100%）
+        String parameter = String.format("%d|0|250|0|0|0|2", chargePower);
         int status = 1; // 1表示开始
         
         boolean result = byteWattService.sendDispatchCommand(deviceId, controlMode, durationSeconds, parameter, status);
@@ -462,9 +429,13 @@ public class CommandService {
      */
     private void executeDischargeCommand(String deviceId, int powerW, int durationSeconds) {
         // 调用ByteWatt API发送放电命令
-        // 控制模式4: 放电模式
-        int controlMode = 4;
-        String parameter = String.valueOf(powerW); // 参数为放电功率
+        // 控制模式: 放电模式
+        int controlMode = 2;
+        
+        // 计算放电功率参数：基准值32000 + 放电功率
+        int dischargePower = 32000 + powerW;
+        // SOC设为10%，发送值25（25 * 0.4% = 10%）
+        String parameter = String.format("%d|0|25|0|0|0|2", dischargePower);
         int status = 1; // 1表示开始
         
         boolean result = byteWattService.sendDispatchCommand(deviceId, controlMode, durationSeconds, parameter, status);
@@ -473,78 +444,6 @@ public class CommandService {
             log.info("Discharging device: {} at {}W for {} seconds", deviceId, powerW, durationSeconds);
         } else {
             log.error("Failed to start discharging for device: {}", deviceId);
-        }
-    }
-    
-    /**
-     * 执行功率因数校正命令
-     * 
-     * @param deviceId 设备ID
-     * @param targetPowerFactor 目标功率因数
-     * @param durationSeconds 持续时间（秒）
-     */
-    private void executePowerFactorCorrectionCommand(String deviceId, double targetPowerFactor, int durationSeconds) {
-        // 调用ByteWatt API发送功率因数校正命令
-        // 控制模式5: 功率因数校正模式
-        int controlMode = 5;
-        String parameter = String.valueOf(targetPowerFactor); // 参数为目标功率因数
-        int status = 1; // 1表示开始
-        
-        boolean result = byteWattService.sendDispatchCommand(deviceId, controlMode, durationSeconds, parameter, status);
-        
-        if (result) {
-            log.info("Setting power factor correction for device: {} to {} for {} seconds", 
-                    deviceId, targetPowerFactor, durationSeconds);
-        } else {
-            log.error("Failed to set power factor correction for device: {}", deviceId);
-        }
-    }
-    
-    /**
-     * 执行注入无功功率命令
-     * 
-     * @param deviceId 设备ID
-     * @param reactivePowerVar 无功功率（VAR）
-     * @param durationSeconds 持续时间（秒）
-     */
-    private void executeInjectReactivePowerCommand(String deviceId, int reactivePowerVar, int durationSeconds) {
-        // 调用ByteWatt API发送注入无功功率命令
-        // 控制模式6: 注入无功功率模式
-        int controlMode = 6;
-        String parameter = String.valueOf(reactivePowerVar); // 参数为无功功率值
-        int status = 1; // 1表示开始
-        
-        boolean result = byteWattService.sendDispatchCommand(deviceId, controlMode, durationSeconds, parameter, status);
-        
-        if (result) {
-            log.info("Injecting reactive power for device: {} at {}VAR for {} seconds", 
-                    deviceId, reactivePowerVar, durationSeconds);
-        } else {
-            log.error("Failed to inject reactive power for device: {}", deviceId);
-        }
-    }
-    
-    /**
-     * 执行吸收无功功率命令
-     * 
-     * @param deviceId 设备ID
-     * @param reactivePowerVar 无功功率（VAR）
-     * @param durationSeconds 持续时间（秒）
-     */
-    private void executeAbsorbReactivePowerCommand(String deviceId, int reactivePowerVar, int durationSeconds) {
-        // 调用ByteWatt API发送吸收无功功率命令
-        // 控制模式7: 吸收无功功率模式
-        int controlMode = 7;
-        String parameter = String.valueOf(reactivePowerVar); // 参数为无功功率值
-        int status = 1; // 1表示开始
-        
-        boolean result = byteWattService.sendDispatchCommand(deviceId, controlMode, durationSeconds, parameter, status);
-        
-        if (result) {
-            log.info("Absorbing reactive power for device: {} at {}VAR for {} seconds", 
-                    deviceId, reactivePowerVar, durationSeconds);
-        } else {
-            log.error("Failed to absorb reactive power for device: {}", deviceId);
         }
     }
 }
