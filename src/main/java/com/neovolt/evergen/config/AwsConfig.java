@@ -15,30 +15,39 @@ import com.amazonaws.services.sqs.AmazonSQSClientBuilder;
  */
 @Configuration
 public class AwsConfig {
-    @Value("${cloud.aws.credentials.access-key}")
-    private String accessKey;
-
-    @Value("${cloud.aws.credentials.secret-key}")
-    private String secretKey;
 
     @Value("${cloud.aws.region.static}")
     private String region;
 
-    @Value("${cloud.aws.endpoint.sqs}")
+    @Value("${cloud.aws.endpoint.sqs:#{null}}")
     private String sqsEndpoint;
 
-    /**
-     * 创建Amazon SQS客户端，用于与SQS队列交互
-     * 
-     * @return 配置好的SQS客户端
-     */
+    @Value("${cloud.aws.credentials.access-key:#{null}}")
+    private String accessKey;
+
+    @Value("${cloud.aws.credentials.secret-key:#{null}}")
+    private String secretKey;
+
     @Bean
     public AmazonSQS amazonSQS() {
-        BasicAWSCredentials awsCredentials = new BasicAWSCredentials(accessKey, secretKey);
-        return AmazonSQSClientBuilder.standard()
-                .withEndpointConfiguration(
-                        new AwsClientBuilder.EndpointConfiguration(sqsEndpoint, region))
-                .withCredentials(new AWSStaticCredentialsProvider(awsCredentials))
-                .build();
+        AmazonSQSClientBuilder builder = AmazonSQSClientBuilder.standard();
+        
+        // 设置区域
+        builder.withRegion(region);
+        
+        // 如果有配置端点，则使用指定端点
+        if (sqsEndpoint != null && !sqsEndpoint.isEmpty()) {
+            builder.withEndpointConfiguration(
+                new AwsClientBuilder.EndpointConfiguration(sqsEndpoint, region));
+        }
+        
+        // 如果有配置访问密钥，则使用静态凭证
+        if (accessKey != null && secretKey != null) {
+            BasicAWSCredentials awsCredentials = new BasicAWSCredentials(accessKey, secretKey);
+            builder.withCredentials(new AWSStaticCredentialsProvider(awsCredentials));
+        }
+        // 否则使用默认凭证提供程序链（可以从IAM角色获取凭证）
+        
+        return builder.build();
     }
 }
