@@ -1,0 +1,16 @@
+# 本地开发环境配置
+
+# AWS配置
+cloud:
+  aws:
+    credentials:
+      access-key: "123"
+      secret-key: "123"
+    endpoint:
+      sqs: http://localhost:4566
+
+# SQS队列配置
+sqs:
+  queues:
+    command: http://localhost:4566/000000000000/commands-neovolt-dev
+    telemetry: http://localhost:4566/000000000000/telemetry-neovolt-dev

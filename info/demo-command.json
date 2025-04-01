@@ -1,0 +1,81 @@
+{
+  "testCommands": [
+    {
+
+        "specversion": "1.0",
+        "id": "onboard-test-001",
+        "source": "urn:com.evergen.energy.platform",
+        "type": "com.evergen.energy.onboarding-request.v1",
+        "time": "2024-01-18T10:00:00Z",
+        "datacontenttype": "application/json",
+        "data": {
+          "serialNumber": "25000SB235W00054"
+        }
+      
+    },
+    {
+
+        "specversion": "1.0",
+        "id": "offboard-test-001",
+        "source": "urn:com.evergen.energy.platform",
+        "type": "com.evergen.energy.offboarding-request.v1",
+        "time": "2024-01-18T15:00:00Z",
+        "datacontenttype": "application/json",
+        "data": {
+          "serialNumber": "25000SB235W00054"
+        }
+    },
+    {
+
+        "specversion": "1.0",
+        "id": "command-test-001",
+        "source": "urn:com.evergen.energy.platform",
+        "type": "com.evergen.energy.battery-inverter.command.v1",
+        "time": "2024-01-18T12:00:00Z",
+        "datacontenttype": "application/json",
+        "data": {
+          "deviceId": "25000SB235W00054",
+          "durationSeconds": 3600,
+          "realMode": {
+            "selfConsumptionCommand": {}
+          }
+        }
+    },
+    {
+
+        "specversion": "1.0",
+        "id": "command-test-002",
+        "source": "urn:com.evergen.energy.platform",
+        "type": "com.evergen.energy.battery-inverter.command.v1",
+        "time": "2024-01-18T13:00:00Z",
+        "datacontenttype": "application/json",
+        "data": {
+          "deviceId": "25000SB235W00054",
+          "durationSeconds": 3600,
+          "realMode": {
+            "chargeCommand": {
+              "powerW": 1000
+            }
+          }
+        }
+    },
+    {
+        "specversion": "1.0",
+        "id": "command-test-003",
+        "source": "urn:com.evergen.energy.platform",
+        "type": "com.evergen.energy.battery-inverter.command.v1",
+        "time": "2024-01-18T14:00:00Z",
+        "datacontenttype": "application/json",
+        "data": {
+          "deviceId": "25000SB235W00054",
+          "durationSeconds": 3600,
+          "realMode": {
+            "dischargeCommand": {
+              "powerW": 1000
+            }
+          }
+        }
+      
+    }
+  ]
+}

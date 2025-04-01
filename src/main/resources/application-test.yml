@@ -1,0 +1,13 @@
+# 测试环境配置
+
+# AWS配置 - 使用IAM角色认证，无需显式配置credentials
+cloud:
+  aws:
+    stack:
+      auto: false
+
+# SQS队列配置
+sqs:
+  queues:
+    command: https://sqs.ap-southeast-2.amazonaws.com/406871981087/commands-neovolt-dev
+    telemetry: https://sqs.ap-southeast-2.amazonaws.com/406871981087/telemetry-neovolt-dev

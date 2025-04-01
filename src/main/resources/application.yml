@@ -1,8 +1,28 @@
+# 通用配置
+server:
+  port: 8080
+
 spring:
   application:
     name: evergen
-  server:
-    port: 8080
+  profiles:
+    active: test # 默认使用本地环境配置
+
+# 日志配置
+logging:
+  level:
+    root: INFO
+    com.neovolt.evergen: DEBUG
+
+# 源ID配置
+source:
+  id: urn:com.neovolt.cloud
+
+# AWS基础配置
+cloud:
+  aws:
+    region:
+      static: ap-southeast-2
 
 # ByteWatt API配置
 bytewatt:
@@ -11,27 +31,3 @@ bytewatt:
     api-key: "Xiw5BieVDA5AHd8mjFkjWdomFIoUQcjzyeypBARUKe/vDLAC4wluJW0iZwveDoPInfF3SZtFT5Ru3BlLtZCexAzxHmwDGpIKAngPWxkbombGIg0q2aPa09bC+ANbraBJR417HDiVM+7AD0AceetK9z35+SU4SPG0f7hf6EGIFw0="
     key: "e50WQcdUvZWSsLcOpfYpyp+SFKM819UFnoLiutgxqNkLFBRVj/QRi43UqBoxPDpKr96AbienzM96yt4WauESxNj55VHnOePpLP5di9RKdBfAwpd1Z2z8M19ZYuq8x0FqRXks4kD36rP3xvI5DZ7IBup6MUmyVzc6Lhi+Tje/W3E="
     group-key: "8259f9636e6b44e1b15f56a4e056c66a"
-
-# AWS配置
-cloud:
-  aws:
-    credentials:
-      access-key: "123"
-      secret-key: "123"
-    region:
-      static: ap-southeast-2
-    endpoint:
-      sqs: http://localhost:4566
-
-# SQS队列配置
-sqs:
-  queues:
-    command: http://localhost:4566/000000000000/commands-neovolt-dev
-    telemetry: http://localhost:4566/000000000000/telemetry-neovolt-dev
-
-
-# 日志配置
-logging:
-  level:
-    root: INFO
-    com.neovolt.evergen: DEBUG
