@@ -32,13 +32,14 @@ public class AwsConfig {
     public AmazonSQS amazonSQS() {
         AmazonSQSClientBuilder builder = AmazonSQSClientBuilder.standard();
         
-        // 设置区域
-        builder.withRegion(region);
-        
-        // 如果有配置端点，则使用指定端点
+        // 使用条件判断
         if (sqsEndpoint != null && !sqsEndpoint.isEmpty()) {
+            // 如果有配置端点，使用EndpointConfiguration
             builder.withEndpointConfiguration(
                 new AwsClientBuilder.EndpointConfiguration(sqsEndpoint, region));
+        } else {
+            // 否则只设置区域
+            builder.withRegion(region);
         }
         
         // 如果有配置访问密钥，则使用静态凭证

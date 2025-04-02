@@ -15,6 +15,7 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
+
 import com.neovolt.evergen.model.bytewatt.ByteWattResponse;
 import com.neovolt.evergen.model.bytewatt.RunningData;
 import com.neovolt.evergen.model.bytewatt.SystemInfo;
@@ -397,8 +398,8 @@ public class ByteWattService {
             
             // 最大充放电功率
             if (systemInfo != null) {
-                inverter.setMaxChargePowerW(systemInfo.getPoinv() != null ? systemInfo.getPoinv().intValue() : null);
-                inverter.setMaxDischargePowerW(systemInfo.getPoinv() != null ? systemInfo.getPoinv().intValue() : null);
+                inverter.setMaxChargePowerW(systemInfo.getPoinv() != null ? systemInfo.getPoinv().intValue() * 1000 : null);
+                inverter.setMaxDischargePowerW(systemInfo.getPoinv() != null ? systemInfo.getPoinv().intValue() * 1000 : null);
             }
         } catch (Exception e) {
             log.error("Error setting HybridInverter properties: {}", e.getMessage());
