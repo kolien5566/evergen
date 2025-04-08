@@ -14,6 +14,17 @@
       
     },
     {
+      "specversion": "1.0",
+      "type": "com.evergen.energy.onboarding-request.v1",
+      "source": "urn:com.example",
+      "id": "A234-1234-1234",
+      "time": "2025-04-03T03:31:00Z",
+      "datacontenttype": "application/json",
+      "data": {
+        "serialNumber": "25000SB235W00055"
+      }
+    },
+    {
 
         "specversion": "1.0",
         "id": "offboard-test-001",

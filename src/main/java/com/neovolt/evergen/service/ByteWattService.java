@@ -47,8 +47,50 @@ public class ByteWattService {
     @Value("${bytewatt.api.group-key}")
     private String groupKey;
 
+    // 添加错误代码和错误信息的记录
+    private int lastErrorCode = 0;
+    private String lastErrorInfo = "";
+
     public ByteWattService(RestTemplate restTemplate) {
         this.restTemplate = restTemplate;
+    }
+
+    /**
+     * 获取最后一次API调用的错误代码
+     * 
+     * @return 错误代码
+     */
+    public int getLastErrorCode() {
+        return this.lastErrorCode;
+    }
+
+    /**
+     * 获取最后一次API调用的错误信息
+     * 
+     * @return 错误信息
+     */
+    public String getLastErrorInfo() {
+        return this.lastErrorInfo;
+    }
+
+    /**
+     * 重置错误状态
+     */
+    private void resetError() {
+        this.lastErrorCode = 0;
+        this.lastErrorInfo = "";
+    }
+
+    /**
+     * 设置错误状态
+     * 
+     * @param code 错误代码
+     * @param info 错误信息
+     */
+    private void setError(int code, String info) {
+        this.lastErrorCode = code;
+        this.lastErrorInfo = info;
+        log.debug("API错误: 代码={}, 信息={}", code, info);
     }
 
     /**
@@ -193,6 +235,9 @@ public class ByteWattService {
      * @return 是否绑定成功
      */
     public boolean bindSn(String serialNumber) {
+        // 重置错误状态
+        resetError();
+        
         try {
             String checkCode = generateSnPassword(serialNumber);
             
@@ -212,9 +257,24 @@ public class ByteWattService {
                 ByteWattResponse.class
             );
             
-            return response.getBody() != null && response.getBody().getCode() == 200;
+            ByteWattResponse responseBody = response.getBody();
+            if (responseBody != null) {
+                if (responseBody.getCode() == 200) {
+                    return true;
+                } else {
+                    // 记录错误信息
+                    setError(responseBody.getCode(), responseBody.getInfo());
+                    log.warn("绑定SN失败: 序列号={}, 错误代码={}, 错误信息={}", 
+                             serialNumber, responseBody.getCode(), responseBody.getInfo());
+                    return false;
+                }
+            } else {
+                setError(-1, "API返回空响应");
+                return false;
+            }
         } catch (Exception e) {
-            log.error("Error binding SN: {}", e.getMessage());
+            setError(-2, e.getMessage());
+            log.error("绑定SN异常: {}", e.getMessage(), e);
             return false;
         }
     }
@@ -226,6 +286,9 @@ public class ByteWattService {
      * @return 是否添加成功
      */
     public boolean addSnToGroup(String serialNumber) {
+        // 重置错误状态
+        resetError();
+        
         try {
             Map<String, Object> requestBody = createAuthParams();
             requestBody.put("group_key", groupKey);
@@ -243,9 +306,24 @@ public class ByteWattService {
                 ByteWattResponse.class
             );
             
-            return response.getBody() != null && response.getBody().getCode() == 200;
+            ByteWattResponse responseBody = response.getBody();
+            if (responseBody != null) {
+                if (responseBody.getCode() == 200) {
+                    return true;
+                } else {
+                    // 记录错误信息
+                    setError(responseBody.getCode(), responseBody.getInfo());
+                    log.warn("添加SN到组失败: 序列号={}, 错误代码={}, 错误信息={}", 
+                             serialNumber, responseBody.getCode(), responseBody.getInfo());
+                    return false;
+                }
+            } else {
+                setError(-1, "API返回空响应");
+                return false;
+            }
         } catch (Exception e) {
-            log.error("Error adding SN to group: {}", e.getMessage());
+            setError(-2, e.getMessage());
+            log.error("添加SN到组异常: {}", e.getMessage(), e);
             return false;
         }
     }

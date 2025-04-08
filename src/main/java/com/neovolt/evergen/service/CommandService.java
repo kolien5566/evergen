@@ -149,17 +149,63 @@ public class CommandService {
         String serialNumber = requestData.getSerialNumber();
         log.info("onboarding sn: {}", serialNumber);
         
+        // 预先创建响应数据对象
+        OnboardingResponseData responseData = new OnboardingResponseData();
+        responseData.setSerialNumber(serialNumber);
+        responseData.setDeviceId(serialNumber); // 使用序列号作为设备ID
+        
         try {
             // 1. 调用ByteWatt API绑定SN
             boolean bindResult = byteWattService.bindSn(serialNumber);
             if (!bindResult) {
-                throw new RuntimeException("failed to bind sn");
+                // 获取错误信息
+                int errorCode = byteWattService.getLastErrorCode();
+                String errorInfo = byteWattService.getLastErrorInfo();
+                log.warn("绑定SN失败: 序列号={}, 错误代码={}, 原因={}", serialNumber, errorCode, errorInfo);
+                
+                // 设置错误响应
+                responseData.setConnectionStatus(OnboardingResponseData.CONNECTION_STATUS_NOT_CONNECTED);
+                
+                // 根据错误代码设置错误原因
+                if (errorCode == 6015) {
+                    responseData.setErrorReason(OnboardingResponseData.ERROR_REASON_WRONG_SERIAL);
+                    log.warn("设备序列号错误 (code 6015): {}", serialNumber);
+                } else if (errorCode == 6024) {
+                    responseData.setErrorReason(OnboardingResponseData.ERROR_REASON_IN_OTHER_VPP);
+                    log.warn("设备已在其他VPP中 (code 6024): {}", serialNumber);
+                } else {
+                    responseData.setErrorReason(OnboardingResponseData.ERROR_REASON_REGISTRATION_INCOMPLETE);
+                    log.warn("设备注册未完成: {}, 错误代码: {}", serialNumber, errorCode);
+                }
+                
+                // 发送错误响应
+                sendOnboardingResponse(responseData);
+                return;
             }
             
             // 2. 调用ByteWatt API添加SN到组
             boolean addResult = byteWattService.addSnToGroup(serialNumber);
             if (!addResult) {
-                throw new RuntimeException("failed to add group");
+                // 获取错误信息
+                int errorCode = byteWattService.getLastErrorCode();
+                String errorInfo = byteWattService.getLastErrorInfo();
+                log.warn("添加SN到组失败: 序列号={}, 错误代码={}, 原因={}", serialNumber, errorCode, errorInfo);
+                
+                // 设置错误响应
+                responseData.setConnectionStatus(OnboardingResponseData.CONNECTION_STATUS_NOT_CONNECTED);
+                
+                // 根据错误代码设置错误原因
+                if (errorCode == 6024) {
+                    responseData.setErrorReason(OnboardingResponseData.ERROR_REASON_IN_OTHER_VPP);
+                    log.warn("设备已在其他VPP中 (code 6024): {}", serialNumber);
+                } else {
+                    responseData.setErrorReason(OnboardingResponseData.ERROR_REASON_REGISTRATION_INCOMPLETE);
+                    log.warn("添加设备到组失败: {}, 错误代码: {}", serialNumber, errorCode);
+                }
+                
+                // 发送错误响应
+                sendOnboardingResponse(responseData);
+                return;
             }
             
             // 获取系统信息用于构建响应
@@ -173,10 +219,7 @@ public class CommandService {
                 }
             }
             
-            // 创建响应数据
-            OnboardingResponseData responseData = new OnboardingResponseData();
-            responseData.setSerialNumber(serialNumber);
-            responseData.setDeviceId(serialNumber); // 使用序列号作为设备ID
+            // 设置成功响应
             responseData.setConnectionStatus(OnboardingResponseData.CONNECTION_STATUS_CONNECTED);
             
             // 设置站点静态数据
@@ -190,7 +233,29 @@ public class CommandService {
                 responseData.setSiteStaticData(siteStaticData);
             }
             
-            // 发送响应
+            log.info("onboarding成功: {}", serialNumber);
+            
+            // 发送成功响应
+            sendOnboardingResponse(responseData);
+        } catch (Exception e) {
+            log.error("onboarding过程发生异常: {}, 错误: {}", serialNumber, e.getMessage(), e);
+            
+            // 设置错误响应
+            responseData.setConnectionStatus(OnboardingResponseData.CONNECTION_STATUS_NOT_CONNECTED);
+            responseData.setErrorReason(OnboardingResponseData.ERROR_REASON_REGISTRATION_INCOMPLETE);
+            
+            // 发送错误响应
+            sendOnboardingResponse(responseData);
+        }
+    }
+    
+    /**
+     * 发送上线响应到telemetry队列
+     * 
+     * @param responseData 响应数据
+     */
+    private void sendOnboardingResponse(OnboardingResponseData responseData) {
+        try {
             CloudEvent responseEvent = cloudEventService.createCloudEvent(
                     ONBOARDING_RESPONSE_TYPE, 
                     sourceId, 
@@ -198,23 +263,14 @@ public class CommandService {
             
             sendMessage(telemetryQueueUrl, responseEvent);
             
-            log.info("succeed to onboarding，sn: {}", serialNumber);
+            if (OnboardingResponseData.CONNECTION_STATUS_CONNECTED.equals(responseData.getConnectionStatus())) {
+                log.info("已发送成功上线响应: {}", responseData.getSerialNumber());
+            } else {
+                log.info("已发送失败上线响应: {}, 错误原因: {}", 
+                        responseData.getSerialNumber(), responseData.getErrorReason());
+            }
         } catch (Exception e) {
-            log.error("fail to onboarding，sn:  {}, error: {}", serialNumber, e.getMessage(), e);
-            
-            // 发送失败响应
-            OnboardingResponseData failureResponse = new OnboardingResponseData();
-            failureResponse.setSerialNumber(serialNumber);
-            failureResponse.setDeviceId(serialNumber);
-            failureResponse.setConnectionStatus(OnboardingResponseData.CONNECTION_STATUS_NOT_CONNECTED);
-            failureResponse.setErrorReason(OnboardingResponseData.ERROR_REASON_WRONG_SERIAL);
-            
-            CloudEvent responseEvent = cloudEventService.createCloudEvent(
-                    ONBOARDING_RESPONSE_TYPE, 
-                    sourceId, 
-                    failureResponse);
-            
-            sendMessage(telemetryQueueUrl, responseEvent);
+            log.error("发送上线响应失败: {}, 错误: {}", responseData.getSerialNumber(), e.getMessage(), e);
         }
     }
     
@@ -227,26 +283,72 @@ public class CommandService {
         String serialNumber = requestData.getSerialNumber();
         log.info("offboarding sn: {}", serialNumber);
         
+        // 预先创建响应数据对象
+        OffboardingResponseData responseData = new OffboardingResponseData();
+        responseData.setSerialNumber(serialNumber);
+        responseData.setDeviceId(serialNumber); // 使用序列号作为设备ID
+        
         try {
             // 1. 调用ByteWatt API从组中移除SN
             boolean removeResult = byteWattService.removeSnFromGroup(serialNumber);
             if (!removeResult) {
-                throw new RuntimeException("fail to remove group");
+                // 获取错误信息
+                int errorCode = byteWattService.getLastErrorCode();
+                String errorInfo = byteWattService.getLastErrorInfo();
+                log.warn("从组中移除SN失败: 序列号={}, 错误代码={}, 原因={}", serialNumber, errorCode, errorInfo);
+                
+                // 设置错误响应
+                responseData.setConnectionStatus(OffboardingResponseData.CONNECTION_STATUS_NOT_CONNECTED);
+                responseData.setErrorReason(OffboardingResponseData.ERROR_REASON_WRONG_SERIAL);
+                
+                // 发送错误响应
+                sendOffboardingResponse(responseData);
+                return;
             }
             
             // 2. 调用ByteWatt API解绑SN
             boolean unbindResult = byteWattService.unbindSn(serialNumber);
             if (!unbindResult) {
-                throw new RuntimeException("fail to unbind sn");
+                // 获取错误信息
+                int errorCode = byteWattService.getLastErrorCode();
+                String errorInfo = byteWattService.getLastErrorInfo();
+                log.warn("解绑SN失败: 序列号={}, 错误代码={}, 原因={}", serialNumber, errorCode, errorInfo);
+                
+                // 设置错误响应
+                responseData.setConnectionStatus(OffboardingResponseData.CONNECTION_STATUS_NOT_CONNECTED);
+                responseData.setErrorReason(OffboardingResponseData.ERROR_REASON_WRONG_SERIAL);
+                
+                // 发送错误响应
+                sendOffboardingResponse(responseData);
+                return;
             }
             
-            // 创建响应数据
-            OffboardingResponseData responseData = new OffboardingResponseData();
-            responseData.setSerialNumber(serialNumber);
-            responseData.setDeviceId(serialNumber); // 使用序列号作为设备ID
+            // 设置成功响应
             responseData.setConnectionStatus(OffboardingResponseData.CONNECTION_STATUS_CONNECTED);
             
-            // 发送响应
+            log.info("offboarding成功: {}", serialNumber);
+            
+            // 发送成功响应
+            sendOffboardingResponse(responseData);
+        } catch (Exception e) {
+            log.error("offboarding过程发生异常: {}, 错误: {}", serialNumber, e.getMessage(), e);
+            
+            // 设置错误响应
+            responseData.setConnectionStatus(OffboardingResponseData.CONNECTION_STATUS_NOT_CONNECTED);
+            responseData.setErrorReason(OffboardingResponseData.ERROR_REASON_WRONG_SERIAL);
+            
+            // 发送错误响应
+            sendOffboardingResponse(responseData);
+        }
+    }
+    
+    /**
+     * 发送下线响应到telemetry队列
+     * 
+     * @param responseData 响应数据
+     */
+    private void sendOffboardingResponse(OffboardingResponseData responseData) {
+        try {
             CloudEvent responseEvent = cloudEventService.createCloudEvent(
                     OFFBOARDING_RESPONSE_TYPE, 
                     sourceId, 
@@ -254,23 +356,14 @@ public class CommandService {
             
             sendMessage(telemetryQueueUrl, responseEvent);
             
-            log.info("succeed to offboarding，sn: {}", serialNumber);
+            if (OffboardingResponseData.CONNECTION_STATUS_CONNECTED.equals(responseData.getConnectionStatus())) {
+                log.info("已发送成功下线响应: {}", responseData.getSerialNumber());
+            } else {
+                log.info("已发送失败下线响应: {}, 错误原因: {}", 
+                        responseData.getSerialNumber(), responseData.getErrorReason());
+            }
         } catch (Exception e) {
-            log.error("fail to offboarding, sn: {}, error: {}", serialNumber, e.getMessage(), e);
-            
-            // 发送失败响应
-            OffboardingResponseData failureResponse = new OffboardingResponseData();
-            failureResponse.setSerialNumber(serialNumber);
-            failureResponse.setDeviceId(serialNumber);
-            failureResponse.setConnectionStatus(OffboardingResponseData.CONNECTION_STATUS_NOT_CONNECTED);
-            failureResponse.setErrorReason(OffboardingResponseData.ERROR_REASON_WRONG_SERIAL);
-            
-            CloudEvent responseEvent = cloudEventService.createCloudEvent(
-                    OFFBOARDING_RESPONSE_TYPE, 
-                    sourceId, 
-                    failureResponse);
-            
-            sendMessage(telemetryQueueUrl, responseEvent);
+            log.error("发送下线响应失败: {}, 错误: {}", responseData.getSerialNumber(), e.getMessage(), e);
         }
     }
     
