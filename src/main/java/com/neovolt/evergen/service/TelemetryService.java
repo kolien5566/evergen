@@ -139,6 +139,13 @@ public class TelemetryService {
             if (siteId.equals(runningData.getSysSn())) {
                 // 转换为HybridInverter对象
                 HybridInverter inverter = byteWattService.convertToHybridInverter(runningData, systemInfo);
+                
+                // 转换上传时间为UTC
+                LocalDateTime utcTime = byteWattService.convertToUtcTime(runningData.getUploadDatetime(), systemInfo.getTimezone());
+                
+                // 设置设备时间为UTC时间
+                inverter.setDeviceTime(utcTime);
+                
                 hybridInverters.add(inverter);
                 break;
             }
@@ -174,6 +181,13 @@ public class TelemetryService {
             if (siteId.equals(runningData.getSysSn())) {
                 // 转换为Meter对象
                 Meter meter = byteWattService.convertToMeter(runningData, systemInfo);
+                
+                // 转换上传时间为UTC
+                LocalDateTime utcTime = byteWattService.convertToUtcTime(runningData.getUploadDatetime(), systemInfo.getTimezone());
+                
+                // 设置设备时间为UTC时间
+                meter.setDeviceTime(utcTime);
+                
                 meters.add(meter);
                 break;
             }

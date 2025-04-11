@@ -4,6 +4,9 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.time.LocalDateTime;
+import java.time.ZoneOffset;
+import java.time.ZonedDateTime;
 
 import org.apache.commons.codec.digest.DigestUtils;
 import org.springframework.beans.factory.annotation.Value;
@@ -565,5 +568,29 @@ public class ByteWattService {
         double pv3 = runningData.getPPv3() != null ? runningData.getPPv3() : 0;
         double pv4 = runningData.getPPv4() != null ? runningData.getPPv4() : 0;
         return (int) (pv1 + pv2 + pv3 + pv4);
+    }
+
+    /**
+     * 将设备本地时间转换为UTC时间
+     * 
+     * @param localTime 设备本地时间
+     * @param timezoneStr 时区字符串，格式如"+10:00"
+     * @return UTC时间
+     */
+    public LocalDateTime convertToUtcTime(LocalDateTime localTime, String timezoneStr) {
+        if (localTime == null || timezoneStr == null) {
+            return localTime;
+        }
+        
+        // 处理timezone格式如"+10:00"
+        ZoneOffset zoneOffset = ZoneOffset.of(timezoneStr);
+        
+        // 创建带时区的日期时间
+        ZonedDateTime zonedDateTime = localTime.atZone(zoneOffset);
+        
+        // 转换为UTC时间
+        ZonedDateTime utcTime = zonedDateTime.withZoneSameInstant(ZoneOffset.UTC);
+        
+        return utcTime.toLocalDateTime();
     }
 }
