@@ -149,7 +149,7 @@ public class ByteWattService {
         try {
             Map<String, Object> requestBody = createAuthParams();
             requestBody.put("page_index", 1);
-            requestBody.put("page_size", 100);  // 获取足够多的系统信息
+            requestBody.put("page_size", 1000);  // 获取足够多的系统信息
             
             String url = baseUrl + "/Open/ESS/GetSystemList";
             HttpHeaders headers = new HttpHeaders();

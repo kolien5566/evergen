@@ -66,7 +66,7 @@ public class SystemInfo {
     // 坐标经度
     @JsonProperty("longitude")
     private String longitude;
-    // 时区
+    // 时区, 这边api会传这样的数据 "timezone":"+10:00"
     @JsonProperty("timezone")
     private String timezone;
     // 安规ID

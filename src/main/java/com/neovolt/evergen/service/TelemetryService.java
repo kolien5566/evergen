@@ -13,10 +13,8 @@ import com.amazonaws.services.sqs.model.SendMessageRequest;
 import com.neovolt.evergen.model.bytewatt.RunningData;
 import com.neovolt.evergen.model.bytewatt.SystemInfo;
 import com.neovolt.evergen.model.queue.TelemetryData;
-import com.neovolt.evergen.model.site.BatteryInverter;
 import com.neovolt.evergen.model.site.HybridInverter;
 import com.neovolt.evergen.model.site.Meter;
-import com.neovolt.evergen.model.site.SolarInverter;
 
 import io.cloudevents.CloudEvent;
 import lombok.extern.slf4j.Slf4j;
@@ -71,17 +69,13 @@ public class TelemetryService {
             
             for (String siteId : siteIds) {
                 // 收集该站点的所有设备数据
-                // 电池逆变器，这里没有
-                List<BatteryInverter> batteryInverters = new ArrayList<>();
-                // pv逆变器，这里没有
-                List<SolarInverter> solarInverters = new ArrayList<>();
-                // 混合逆变器，是有的
+                // 混合逆变器
                 List<HybridInverter> hybridInverters = collectHybridInverterData(siteId);
-                // 电表，是有的
+                // 电表
                 List<Meter> meters = collectMeterData(siteId);
                 
                 // 发送遥测数据
-                sendTelemetry(siteId, batteryInverters, hybridInverters, solarInverters, meters);
+                sendTelemetry(siteId, hybridInverters, meters);
             }
         } catch (Exception e) {
             log.error("Error collecting and sending telemetry data: {}", e.getMessage(), e);
@@ -192,16 +186,14 @@ public class TelemetryService {
      * 发送遥测数据到平台
      * 
      * @param siteId 站点ID
-     * @param batteryInverters 电池逆变器数据列表
+     * @param batteryInverters 电池逆变器数据列表,当前没有
      * @param hybridInverters 混合逆变器数据列表
-     * @param solarInverters 太阳能逆变器数据列表
+     * @param solarInverters 太阳能逆变器数据列表，当前没有
      * @param meters 电表数据列表
      */
     public void sendTelemetry(
             String siteId,
-            List<BatteryInverter> batteryInverters,
             List<HybridInverter> hybridInverters,
-            List<SolarInverter> solarInverters,
             List<Meter> meters) {
         
         log.info("Sending telemetry data for site: {}", siteId);
@@ -209,9 +201,7 @@ public class TelemetryService {
         // 创建遥测数据对象
         TelemetryData telemetryData = new TelemetryData();
         telemetryData.setSiteId(siteId);
-        telemetryData.setBatteryInverters(batteryInverters);
         telemetryData.setHybridInverters(hybridInverters);
-        telemetryData.setSolarInverters(solarInverters);
         telemetryData.setMeters(meters);
         
         // 创建CloudEvent并发送
