@@ -6,7 +6,7 @@ spring:
   application:
     name: evergen
   profiles:
-    active: local # 默认使用本地环境配置
+    active: test # 默认使用本地环境配置
 
 # 日志配置
 logging:
