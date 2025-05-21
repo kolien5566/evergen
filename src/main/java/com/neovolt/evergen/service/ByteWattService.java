@@ -582,15 +582,26 @@ public class ByteWattService {
             return localTime;
         }
         
-        // 处理timezone格式如"+10:00"
-        ZoneOffset zoneOffset = ZoneOffset.of(timezoneStr);
-        
-        // 创建带时区的日期时间
-        ZonedDateTime zonedDateTime = localTime.atZone(zoneOffset);
-        
-        // 转换为UTC时间
-        ZonedDateTime utcTime = zonedDateTime.withZoneSameInstant(ZoneOffset.UTC);
-        
-        return utcTime.toLocalDateTime();
+        try {
+            // 处理timezone格式，确保有+/-前缀
+            if (timezoneStr.matches("\\d+:\\d+")) {
+                // 如果只有数字和冒号(如"00:00")，则加上"+"前缀
+                timezoneStr = "+" + timezoneStr;
+            }
+            
+            // 创建时区偏移对象
+            ZoneOffset zoneOffset = ZoneOffset.of(timezoneStr);
+            
+            // 创建带时区的日期时间
+            ZonedDateTime zonedDateTime = localTime.atZone(zoneOffset);
+            
+            // 转换为UTC时间
+            ZonedDateTime utcTime = zonedDateTime.withZoneSameInstant(ZoneOffset.UTC);
+            
+            return utcTime.toLocalDateTime();
+        } catch (Exception e) {
+            log.error("Error converting to UTC time. Using local time instead. Error: {}", e.getMessage());
+            return localTime;
+        }
     }
 }
