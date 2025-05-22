@@ -452,9 +452,11 @@ public class CommandService {
         // 调用ByteWatt API发送自消费模式命令
         // 控制模式: 自发自用
         int controlMode = 3;
-        String parameter = "";
+        // 最大功率参数：
+        int chargePower = 37000;
+        // SOC设为100%，发送值250（250 * 0.4% = 100%）
+        String parameter = String.format("%d|0|0|0|0|0|1", chargePower);
         int status = 1; // 1表示开始
-        
         boolean result = byteWattService.sendDispatchCommand(deviceId, controlMode, durationSeconds, parameter, status);
         
         if (result) {
@@ -472,11 +474,13 @@ public class CommandService {
      */
     private void executeChargeOnlySelfConsumptionCommand(String deviceId, int durationSeconds) {
         // 调用ByteWatt API发送仅充电自消费模式命令
-        // 控制模式: 禁止放电（仅充电）的自发自用
+        // 控制模式: 禁止放电的自发自用
         int controlMode = 1;
-        String parameter = "";
+        // 最大功率参数：
+        int chargePower = 37000;
+        // SOC设为100%，发送值250（250 * 0.4% = 100%）
+        String parameter = String.format("%d|0|0|0|0|0|1", chargePower);
         int status = 1; // 1表示开始
-        
         boolean result = byteWattService.sendDispatchCommand(deviceId, controlMode, durationSeconds, parameter, status);
         
         if (result) {
@@ -497,13 +501,11 @@ public class CommandService {
         // 调用ByteWatt API发送充电命令
         // 控制模式: 充电模式
         int controlMode = 2;
-        
         // 计算充电功率参数：基准值32000 - 充电功率
         int chargePower = 32000 - powerW;
         // SOC设为100%，发送值250（250 * 0.4% = 100%）
-        String parameter = String.format("%d|0|250|0|0|0|2", chargePower);
+        String parameter = String.format("%d|0|250|0|0|0|1", chargePower);
         int status = 1; // 1表示开始
-        
         boolean result = byteWattService.sendDispatchCommand(deviceId, controlMode, durationSeconds, parameter, status);
         
         if (result) {
@@ -524,13 +526,11 @@ public class CommandService {
         // 调用ByteWatt API发送放电命令
         // 控制模式: 放电模式
         int controlMode = 2;
-        
         // 计算放电功率参数：基准值32000 + 放电功率
         int dischargePower = 32000 + powerW;
         // SOC设为10%，发送值25（25 * 0.4% = 10%）
-        String parameter = String.format("%d|0|25|0|0|0|2", dischargePower);
+        String parameter = String.format("%d|0|25|0|0|0|1", dischargePower);
         int status = 1; // 1表示开始
-        
         boolean result = byteWattService.sendDispatchCommand(deviceId, controlMode, durationSeconds, parameter, status);
         
         if (result) {
