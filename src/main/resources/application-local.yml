@@ -7,10 +7,10 @@ cloud:
       access-key: "123"
       secret-key: "123"
     endpoint:
-      sqs: http://localhost:4566
+      sqs: http://10.0.10.68:4566
 
 # SQS队列配置
 sqs:
   queues:
-    command: http://localhost:4566/000000000000/commands-neovolt-dev
-    telemetry: http://localhost:4566/000000000000/telemetry-neovolt-dev
+    command: http://10.0.10.68:4566/000000000000/commands-neovolt-dev
+    telemetry: http://10.0.10.68:4566/000000000000/telemetry-neovolt-dev
