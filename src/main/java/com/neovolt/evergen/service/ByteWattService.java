@@ -605,6 +605,55 @@ public class ByteWattService {
             return localTime;
         }
     }
+    /**
+     * 使用SecondLevelData中的准确数据更新RunningData
+     * 
+     * @param runningData 原始运行数据
+     * @param secondLevelData 实时功率数据
+     * @return 更新后的RunningData对象
+     */
+    public RunningData mergeWithSecondLevelData(RunningData runningData, SecondLevelData secondLevelData) {
+        if (runningData == null || secondLevelData == null) {
+            return runningData;
+        }
+        
+        // 创建一个新的RunningData对象，避免修改原对象
+        RunningData mergedData = new RunningData();
+        
+        // 复制原有数据
+        mergedData.setSysSn(runningData.getSysSn());
+        mergedData.setUploadDatetime(runningData.getUploadDatetime());
+        mergedData.setUA(runningData.getUA());
+        mergedData.setUB(runningData.getUB());
+        mergedData.setUC(runningData.getUC());
+        mergedData.setFac(runningData.getFac());
+        mergedData.setBatV(runningData.getBatV());
+        mergedData.setBatC(runningData.getBatC());
+        mergedData.setInvWorkMode(runningData.getInvWorkMode());
+        mergedData.setEpvTotal(runningData.getEpvTotal());
+        mergedData.setEInput(runningData.getEInput());
+        mergedData.setEOutput(runningData.getEOutput());
+        mergedData.setECharge(runningData.getECharge());
+        
+        // 使用SecondLevelData中的准确数据替换对应字段
+        // PV功率数据
+        mergedData.setPPv1(secondLevelData.getPpv1() != null ? secondLevelData.getPpv1() : runningData.getPPv1());
+        mergedData.setPPv2(secondLevelData.getPpv2() != null ? secondLevelData.getPpv2() : runningData.getPPv2());
+        mergedData.setPPv3(secondLevelData.getPpv3() != null ? secondLevelData.getPpv3() : runningData.getPPv3());
+        mergedData.setPPv4(secondLevelData.getPpv4() != null ? secondLevelData.getPpv4() : runningData.getPPv4());
+        
+        // 电表功率数据
+        mergedData.setPMeterL1(secondLevelData.getPmeterL1() != null ? secondLevelData.getPmeterL1() : runningData.getPMeterL1());
+        mergedData.setPMeterL2(secondLevelData.getPmeterL2() != null ? secondLevelData.getPmeterL2() : runningData.getPMeterL2());
+        mergedData.setPMeterL3(secondLevelData.getPmeterL3() != null ? secondLevelData.getPmeterL3() : runningData.getPMeterL3());
+        mergedData.setPMeterDc(secondLevelData.getPmeterDc() != null ? secondLevelData.getPmeterDc() : runningData.getPMeterDc());
+        
+        // 电池相关数据
+        mergedData.setPBat(secondLevelData.getPbat() != null ? secondLevelData.getPbat() : runningData.getPBat());
+        mergedData.setSoc(secondLevelData.getSoc() != null ? secondLevelData.getSoc() : runningData.getSoc());
+        
+        return mergedData;
+    }
 
     /**
      * 获取组内所有设备的实时功率数据（SecondLevelData）
