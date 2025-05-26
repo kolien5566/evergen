@@ -79,10 +79,10 @@ public class RunningData {
     // 电表L1功率
     @JsonProperty("p_meter_l1")
     private Double pMeterL1;
-    // 电表L1功率
+    // 电表L2功率
     @JsonProperty("p_meter_l2")
     private Double pMeterL2;
-    // 电表L1功率
+    // 电表L3功率
     @JsonProperty("p_meter_l3")
     private Double pMeterL3;
     // 光伏并网机的电表功率

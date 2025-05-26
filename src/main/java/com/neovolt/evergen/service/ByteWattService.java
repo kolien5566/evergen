@@ -21,6 +21,7 @@ import org.springframework.web.client.RestTemplate;
 
 import com.neovolt.evergen.model.bytewatt.ByteWattResponse;
 import com.neovolt.evergen.model.bytewatt.RunningData;
+import com.neovolt.evergen.model.bytewatt.SecondLevelData;
 import com.neovolt.evergen.model.bytewatt.SystemInfo;
 import com.neovolt.evergen.model.bytewatt.SystemListResponse;
 import com.neovolt.evergen.model.site.HybridInverter;
@@ -603,5 +604,196 @@ public class ByteWattService {
             log.error("Error converting to UTC time. Using local time instead. Error: {}", e.getMessage());
             return localTime;
         }
+    }
+
+    /**
+     * 获取指定系统的实时功率数据（SecondLevelData）
+     *
+     * @param sysSn 系统SN
+     * @return SecondLevelData对象，如果获取失败返回null
+     */
+    public SecondLevelData getSecondLevelData(String sysSn) {
+        try {
+            Map<String, Object> requestBody = createAuthParams();
+            requestBody.put("sys_sn", sysSn);
+
+            String url = baseUrl + "/Open/Power/GetLastPowerDataBySN";
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_JSON);
+            HttpEntity<Map<String, Object>> entity = new HttpEntity<>(requestBody, headers);
+            
+            ResponseEntity<ByteWattResponse<SecondLevelData>> response = restTemplate.exchange(
+                url,
+                HttpMethod.POST,
+                entity,
+                new ParameterizedTypeReference<ByteWattResponse<SecondLevelData>>() {}
+            );
+            
+            ByteWattResponse<SecondLevelData> responseBody = response.getBody();
+            if (responseBody != null && responseBody.getCode() == 200) {
+                return responseBody.getData();
+            } else {
+                log.warn("获取SecondLevelData失败: SN={}, 错误代码={}, 错误信息={}", 
+                         sysSn, responseBody != null ? responseBody.getCode() : -1, 
+                         responseBody != null ? responseBody.getInfo() : "响应为空");
+                return null;
+            }
+        } catch (Exception e) {
+            log.error("Error getting second level data for SN {}: {}", sysSn, e.getMessage());
+            return null;
+        }
+    }
+
+    /**
+     * 使用SecondLevelData中的准确数据更新RunningData
+     * 
+     * @param runningData 原始运行数据
+     * @param secondLevelData 实时功率数据
+     * @return 更新后的RunningData对象
+     */
+    public RunningData mergeWithSecondLevelData(RunningData runningData, SecondLevelData secondLevelData) {
+        if (runningData == null || secondLevelData == null) {
+            return runningData;
+        }
+        
+        // 创建一个新的RunningData对象，避免修改原对象
+        RunningData mergedData = new RunningData();
+        
+        // 复制原有数据
+        mergedData.setSysSn(runningData.getSysSn());
+        mergedData.setUploadDatetime(runningData.getUploadDatetime());
+        mergedData.setUA(runningData.getUA());
+        mergedData.setUB(runningData.getUB());
+        mergedData.setUC(runningData.getUC());
+        mergedData.setFac(runningData.getFac());
+        mergedData.setBatV(runningData.getBatV());
+        mergedData.setBatC(runningData.getBatC());
+        mergedData.setInvWorkMode(runningData.getInvWorkMode());
+        mergedData.setEpvTotal(runningData.getEpvTotal());
+        mergedData.setEInput(runningData.getEInput());
+        mergedData.setEOutput(runningData.getEOutput());
+        mergedData.setECharge(runningData.getECharge());
+        
+        // 使用SecondLevelData中的准确数据替换对应字段
+        // PV功率数据
+        mergedData.setPPv1(secondLevelData.getPpv1() != null ? secondLevelData.getPpv1() : runningData.getPPv1());
+        mergedData.setPPv2(secondLevelData.getPpv2() != null ? secondLevelData.getPpv2() : runningData.getPPv2());
+        mergedData.setPPv3(secondLevelData.getPpv3() != null ? secondLevelData.getPpv3() : runningData.getPPv3());
+        mergedData.setPPv4(secondLevelData.getPpv4() != null ? secondLevelData.getPpv4() : runningData.getPPv4());
+        
+        // 电表功率数据
+        mergedData.setPMeterL1(secondLevelData.getPmeterL1() != null ? secondLevelData.getPmeterL1() : runningData.getPMeterL1());
+        mergedData.setPMeterL2(secondLevelData.getPmeterL2() != null ? secondLevelData.getPmeterL2() : runningData.getPMeterL2());
+        mergedData.setPMeterL3(secondLevelData.getPmeterL3() != null ? secondLevelData.getPmeterL3() : runningData.getPMeterL3());
+        mergedData.setPMeterDc(secondLevelData.getPmeterDc() != null ? secondLevelData.getPmeterDc() : runningData.getPMeterDc());
+        
+        // 电池相关数据
+        mergedData.setPBat(secondLevelData.getPbat() != null ? secondLevelData.getPbat() : runningData.getPBat());
+        mergedData.setSoc(secondLevelData.getSoc() != null ? secondLevelData.getSoc() : runningData.getSoc());
+        
+        return mergedData;
+    }
+
+    /**
+     * 获取增强的运行数据（合并RunningData和SecondLevelData）
+     * 
+     * @param sysSn 系统SN
+     * @return 合并后的RunningData，如果获取失败返回null
+     */
+    public RunningData getEnhancedRunningData(String sysSn) {
+        // 获取基础运行数据
+        List<RunningData> runningDataList = getGroupRunningData();
+        RunningData runningData = null;
+        
+        // 查找指定SN的运行数据
+        for (RunningData data : runningDataList) {
+            if (sysSn.equals(data.getSysSn())) {
+                runningData = data;
+                break;
+            }
+        }
+        
+        if (runningData == null) {
+            log.warn("未找到SN为{}的运行数据", sysSn);
+            return null;
+        }
+        
+        // 获取实时功率数据
+        SecondLevelData secondLevelData = getSecondLevelData(sysSn);
+        
+        // 合并数据
+        return mergeWithSecondLevelData(runningData, secondLevelData);
+    }
+
+    /**
+     * 获取组内所有设备的实时功率数据（SecondLevelData）
+     *
+     * @return SecondLevelData列表
+     */
+    public List<SecondLevelData> getGroupSecondLevelData() {
+        try {
+            Map<String, Object> requestBody = createAuthParams();
+            requestBody.put("group_key", groupKey);
+
+            String url = baseUrl + "/Open/Group/GetLastPowerDataByGroup";
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_JSON);
+            HttpEntity<Map<String, Object>> entity = new HttpEntity<>(requestBody, headers);
+            
+            ResponseEntity<ByteWattResponse<List<SecondLevelData>>> response = restTemplate.exchange(
+                url,
+                HttpMethod.POST,
+                entity,
+                new ParameterizedTypeReference<ByteWattResponse<List<SecondLevelData>>>() {}
+            );
+            
+            ByteWattResponse<List<SecondLevelData>> responseBody = response.getBody();
+            if (responseBody != null && responseBody.getCode() == 200) {
+                return responseBody.getData() != null ? responseBody.getData() : new ArrayList<>();
+            } else {
+                log.warn("获取组SecondLevelData失败: 错误代码={}, 错误信息={}", 
+                         responseBody != null ? responseBody.getCode() : -1, 
+                         responseBody != null ? responseBody.getInfo() : "响应为空");
+                return new ArrayList<>();
+            }
+        } catch (Exception e) {
+            log.error("Error getting group second level data: {}", e.getMessage());
+            return new ArrayList<>();
+        }
+    }
+
+    /**
+     * 获取增强的组运行数据（合并RunningData和SecondLevelData）
+     * 
+     * @return 合并后的RunningData列表
+     */
+    public List<RunningData> getEnhancedGroupRunningData() {
+        // 获取基础运行数据
+        List<RunningData> runningDataList = getGroupRunningData();
+        
+        // 获取组实时功率数据
+        List<SecondLevelData> secondLevelDataList = getGroupSecondLevelData();
+        
+        // 创建增强数据列表
+        List<RunningData> enhancedDataList = new ArrayList<>();
+        
+        // 为每个运行数据找到对应的实时功率数据并合并
+        for (RunningData runningData : runningDataList) {
+            SecondLevelData matchingSecondLevel = null;
+            
+            // 查找匹配的SecondLevelData
+            for (SecondLevelData secondLevel : secondLevelDataList) {
+                if (runningData.getSysSn().equals(secondLevel.getSysSn())) {
+                    matchingSecondLevel = secondLevel;
+                    break;
+                }
+            }
+            
+            // 合并数据
+            RunningData enhancedData = mergeWithSecondLevelData(runningData, matchingSecondLevel);
+            enhancedDataList.add(enhancedData);
+        }
+        
+        return enhancedDataList;
     }
 }

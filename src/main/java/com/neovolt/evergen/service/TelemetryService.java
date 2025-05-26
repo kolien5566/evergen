@@ -67,12 +67,18 @@ public class TelemetryService {
             // 获取所有站点ID
             List<String> siteIds = getAllSiteIds();
             
+            // 一次性获取所有增强的运行数据（合并了SecondLevelData）
+            List<RunningData> enhancedRunningDataList = byteWattService.getEnhancedGroupRunningData();
+            
+            // 获取系统信息
+            List<SystemInfo> systems = byteWattService.getSystemList();
+            
             for (String siteId : siteIds) {
                 // 收集该站点的所有设备数据
                 // 混合逆变器
-                List<HybridInverter> hybridInverters = collectHybridInverterData(siteId);
+                List<HybridInverter> hybridInverters = collectHybridInverterData(siteId, enhancedRunningDataList, systems);
                 // 电表
-                List<Meter> meters = collectMeterData(siteId);
+                List<Meter> meters = collectMeterData(siteId, enhancedRunningDataList, systems);
                 
                 // 发送遥测数据
                 sendTelemetry(siteId, hybridInverters, meters);
@@ -114,16 +120,13 @@ public class TelemetryService {
      * 收集混合逆变器数据
      * 
      * @param siteId 站点ID
+     * @param enhancedRunningDataList 增强的运行数据列表
+     * @param systems 系统信息列表
      * @return 混合逆变器数据列表
      */
-    private List<HybridInverter> collectHybridInverterData(String siteId) {
+    private List<HybridInverter> collectHybridInverterData(String siteId, List<RunningData> enhancedRunningDataList, List<SystemInfo> systems) {
         List<HybridInverter> hybridInverters = new ArrayList<>();
         
-        // 获取所有运行数据
-        List<RunningData> runningDataList = byteWattService.getGroupRunningData();
-        
-        // 获取系统信息
-        List<SystemInfo> systems = byteWattService.getSystemList();
         SystemInfo systemInfo = null;
         
         // 查找对应站点的系统信息
@@ -135,7 +138,7 @@ public class TelemetryService {
         }
         
         // 查找对应站点的运行数据
-        for (RunningData runningData : runningDataList) {
+        for (RunningData runningData : enhancedRunningDataList) {
             if (siteId.equals(runningData.getSysSn())) {
                 // 转换为HybridInverter对象
                 HybridInverter inverter = byteWattService.convertToHybridInverter(runningData, systemInfo);
@@ -151,7 +154,6 @@ public class TelemetryService {
             }
         }
         
-        
         return hybridInverters;
     }
     
@@ -159,14 +161,13 @@ public class TelemetryService {
      * 收集电表数据
      * 
      * @param siteId 站点ID
+     * @param enhancedRunningDataList 增强的运行数据列表
+     * @param systems 系统信息列表
      * @return 电表数据列表
      */
-    private List<Meter> collectMeterData(String siteId) {
+    private List<Meter> collectMeterData(String siteId, List<RunningData> enhancedRunningDataList, List<SystemInfo> systems) {
         List<Meter> meters = new ArrayList<>();
         
-        // 获取所有运行数据
-        List<RunningData> runningDataList = byteWattService.getGroupRunningData();
-        List<SystemInfo> systems = byteWattService.getSystemList();
         SystemInfo systemInfo = null;
         
         // 查找对应站点的系统信息
@@ -177,7 +178,7 @@ public class TelemetryService {
             }
         }
         // 查找对应站点的运行数据
-        for (RunningData runningData : runningDataList) {
+        for (RunningData runningData : enhancedRunningDataList) {
             if (siteId.equals(runningData.getSysSn())) {
                 // 转换为Meter对象
                 Meter meter = byteWattService.convertToMeter(runningData, systemInfo);
