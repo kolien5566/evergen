@@ -50,13 +50,7 @@ public class TelemetryService {
      */
     @Scheduled(cron = "0 * * * * *") // 每分钟的第0秒执行
     public void scheduledTelemetryCollection() {
-        LocalDateTime now = LocalDateTime.now();
-        
-        // 只在整1分钟时间点发送数据
-        if (now.getMinute() % 5 == 0) {
-            log.info("Execute time: {}", now);
-            collectAndSendTelemetry();
-        }
+        collectAndSendTelemetry();
     }
     
     /**

@@ -78,11 +78,11 @@
         "time": "2024-01-18T14:00:00Z",
         "datacontenttype": "application/json",
         "data": {
-          "deviceId": "25000SB235W00054",
-          "durationSeconds": 3600,
+          "deviceId": "28000TP235W00040",
+          "durationSeconds": 600,
           "realMode": {
             "dischargeCommand": {
-              "powerW": 1000
+              "powerW": 5000
             }
           }
         }
