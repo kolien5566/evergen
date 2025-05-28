@@ -622,7 +622,6 @@ public class ByteWattService {
         
         // 复制原有数据
         mergedData.setSysSn(runningData.getSysSn());
-        mergedData.setUploadDatetime(runningData.getUploadDatetime());
         mergedData.setUA(runningData.getUA());
         mergedData.setUB(runningData.getUB());
         mergedData.setUC(runningData.getUC());
@@ -636,6 +635,7 @@ public class ByteWattService {
         mergedData.setECharge(runningData.getECharge());
         
         // 使用SecondLevelData中的准确数据替换对应字段
+        mergedData.setUploadDatetime(secondLevelData.getUploadtime());
         // PV功率数据
         mergedData.setPPv1(secondLevelData.getPpv1() != null ? secondLevelData.getPpv1() : runningData.getPPv1());
         mergedData.setPPv2(secondLevelData.getPpv2() != null ? secondLevelData.getPpv2() : runningData.getPPv2());
