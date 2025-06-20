@@ -212,6 +212,9 @@ public class TelemetryService {
         telemetryData.setSiteId(siteId);
         telemetryData.setHybridInverters(hybridInverters);
         telemetryData.setMeters(meters);
+        // 当前没有电池逆变器和太阳能逆变器,设置为空数组
+        telemetryData.setBatteryInverters(new ArrayList<>());
+        telemetryData.setSolarInverters(new ArrayList<>());
         
         // 创建CloudEvent并发送
         CloudEvent event = cloudEventService.createCloudEvent(TELEMETRY_TYPE, sourceId, telemetryData);

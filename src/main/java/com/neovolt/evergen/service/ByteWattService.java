@@ -474,9 +474,17 @@ public class ByteWattService {
             inverter.setCumulativeGridImportWh(runningData.getEInput());
             inverter.setCumulativeGridExportWh(runningData.getEOutput());
             
-            // 电池状态
-            inverter.setStateOfCharge(runningData.getSoc());
-            inverter.setStateOfHealth(100.0);
+            // 电池状态 - 确保值在0-1范围内
+            Double soc = runningData.getSoc();
+            if (soc != null) {
+                soc = soc / 100.0;
+                inverter.setStateOfCharge(soc);
+            } else {
+                inverter.setStateOfCharge(0.0);
+            }
+            
+            // SOH设置为1.0（100%健康度的小数形式）
+            inverter.setStateOfHealth(1.0);
             
             // 最大充放电功率
             if (systemInfo != null) {
@@ -504,7 +512,8 @@ public class ByteWattService {
         Meter meter = new Meter();
         try {
             // 设备信息
-            meter.setDeviceId(runningData.getSysSn() + systemInfo.getMeterModel());
+            String rawDeviceId = runningData.getSysSn() + systemInfo.getMeterModel();
+            meter.setDeviceId(rawDeviceId.replaceAll("[^\\w.\\-]", ""));
             meter.setDeviceTime(runningData.getUploadDatetime());
             
             // 电表功率
