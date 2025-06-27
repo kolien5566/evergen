@@ -468,11 +468,11 @@ public class ByteWattService {
             inverter.setGridFrequencyHz(runningData.getFac());
             
             // 累计能量数据
-            inverter.setCumulativeBatteryChargeEnergyWh(runningData.getECharge());
-            inverter.setCumulativeBatteryDischargeEnergyWh(runningData.getEInput());
-            inverter.setCumulativePvGenerationWh(runningData.getEpvTotal());
-            inverter.setCumulativeGridImportWh(runningData.getEInput());
-            inverter.setCumulativeGridExportWh(runningData.getEOutput());
+            inverter.setCumulativeBatteryChargeEnergyWh(runningData.getECharge() * 1000);
+            inverter.setCumulativeBatteryDischargeEnergyWh(runningData.getEInput() * 1000);
+            inverter.setCumulativePvGenerationWh(runningData.getEpvTotal() * 1000);
+            inverter.setCumulativeGridImportWh(runningData.getEInput() * 1000);
+            inverter.setCumulativeGridExportWh(runningData.getEOutput() * 1000);
             
             // 电池状态 - 确保值在0-1范围内
             Double soc = runningData.getSoc();
@@ -577,7 +577,8 @@ public class ByteWattService {
         double pv2 = runningData.getPPv2() != null ? runningData.getPPv2() : 0;
         double pv3 = runningData.getPPv3() != null ? runningData.getPPv3() : 0;
         double pv4 = runningData.getPPv4() != null ? runningData.getPPv4() : 0;
-        return (int) (pv1 + pv2 + pv3 + pv4);
+        double pdc = runningData.getPMeterDc() != null ? runningData.getPMeterDc() : 0;
+        return (int) (pv1 + pv2 + pv3 + pv4 + pdc);
     }
 
     /**
