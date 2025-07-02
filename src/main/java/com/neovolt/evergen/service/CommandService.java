@@ -324,7 +324,7 @@ public class CommandService {
             }
             
             // 设置成功响应
-            responseData.setConnectionStatus(OffboardingResponseData.CONNECTION_STATUS_CONNECTED);
+            responseData.setConnectionStatus(OffboardingResponseData.CONNECTION_STATUS_NOT_CONNECTED);
             
             log.info("offboarding成功: {}", serialNumber);
             
@@ -335,7 +335,7 @@ public class CommandService {
             
             // 设置错误响应
             responseData.setConnectionStatus(OffboardingResponseData.CONNECTION_STATUS_NOT_CONNECTED);
-            responseData.setErrorReason(OffboardingResponseData.ERROR_REASON_WRONG_SERIAL);
+            responseData.setErrorReason(OffboardingResponseData.ERROR_REASON_DEVICE_OFFLINE);
             
             // 发送错误响应
             sendOffboardingResponse(responseData);
