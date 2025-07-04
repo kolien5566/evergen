@@ -527,8 +527,8 @@ public class ByteWattService {
             meter.setGridFrequencyHz(runningData.getFac());
             
             // 累计电网能量
-            meter.setCumulativeGridImportWh(runningData.getEInput());
-            meter.setCumulativeGridExportWh(runningData.getEOutput());
+            meter.setCumulativeGridImportWh(runningData.getEInput() * 1000);
+            meter.setCumulativeGridExportWh(runningData.getEOutput() * 1000);
         } catch (Exception e) {
             log.error("Error setting Meter properties: {}", e.getMessage());
         }
