@@ -161,26 +161,31 @@ public class CommandService {
                 // 获取错误信息
                 int errorCode = byteWattService.getLastErrorCode();
                 String errorInfo = byteWattService.getLastErrorInfo();
-                log.warn("绑定SN失败: 序列号={}, 错误代码={}, 原因={}", serialNumber, errorCode, errorInfo);
-                
-                // 设置错误响应
-                responseData.setConnectionStatus(OnboardingResponseData.CONNECTION_STATUS_NOT_CONNECTED);
-                
-                // 根据错误代码设置错误原因
-                if (errorCode == 6015) {
-                    responseData.setErrorReason(OnboardingResponseData.ERROR_REASON_WRONG_SERIAL);
-                    log.warn("设备序列号错误 (code 6015): {}", serialNumber);
-                } else if (errorCode == 6024) {
-                    responseData.setErrorReason(OnboardingResponseData.ERROR_REASON_IN_OTHER_VPP);
-                    log.warn("设备已在其他VPP中 (code 6024): {}", serialNumber);
+        
+                // 如果错误代码是6024，继续执行成功流程
+                if (errorCode == 6024) {
+                    log.info("错误代码6024, 继续执行成功流程: {}", serialNumber);
                 } else {
-                    responseData.setErrorReason(OnboardingResponseData.ERROR_REASON_REGISTRATION_INCOMPLETE);
-                    log.warn("设备注册未完成: {}, 错误代码: {}", serialNumber, errorCode);
+                    log.warn("绑定SN失败: 序列号={}, 错误代码={}, 原因={}", serialNumber, errorCode, errorInfo);
+                    // 其他错误代码，设置错误响应
+                    responseData.setConnectionStatus(OnboardingResponseData.CONNECTION_STATUS_NOT_CONNECTED);
+                    
+                    // 根据错误代码设置错误原因
+                    if (errorCode == 6015) {
+                        responseData.setErrorReason(OnboardingResponseData.ERROR_REASON_WRONG_SERIAL);
+                        log.warn("设备序列号错误 (code 6015): {}", serialNumber);
+                    } else if (errorCode == 6026) {
+                        responseData.setErrorReason(OnboardingResponseData.ERROR_REASON_IN_OTHER_VPP);
+                        log.warn("设备已在其他VPP中 (code 6026): {}", serialNumber);
+                    } else {
+                        responseData.setErrorReason(OnboardingResponseData.ERROR_REASON_REGISTRATION_INCOMPLETE);
+                        log.warn("设备注册未完成: {}, 错误代码: {}", serialNumber, errorCode);
+                    }
+                    
+                    // 发送错误响应
+                    sendOnboardingResponse(responseData);
+                    return;
                 }
-                
-                // 发送错误响应
-                sendOnboardingResponse(responseData);
-                return;
             }
             
             // 2. 调用ByteWatt API添加SN到组
@@ -189,24 +194,29 @@ public class CommandService {
                 // 获取错误信息
                 int errorCode = byteWattService.getLastErrorCode();
                 String errorInfo = byteWattService.getLastErrorInfo();
-                log.warn("添加SN到组失败: 序列号={}, 错误代码={}, 原因={}", serialNumber, errorCode, errorInfo);
                 
-                // 设置错误响应
-                responseData.setConnectionStatus(OnboardingResponseData.CONNECTION_STATUS_NOT_CONNECTED);
-                
-                // 根据错误代码设置错误原因
-                if (errorCode == 6024) {
-                    responseData.setErrorReason(OnboardingResponseData.ERROR_REASON_IN_OTHER_VPP);
-                    log.warn("设备已在其他VPP中 (code 6024): {}", serialNumber);
+                if (errorCode == 6025) {
+                    log.info("错误代码6025, 继续执行成功流程: {}", serialNumber);
                 } else {
-                    responseData.setErrorReason(OnboardingResponseData.ERROR_REASON_REGISTRATION_INCOMPLETE);
-                    log.warn("添加设备到组失败: {}, 错误代码: {}", serialNumber, errorCode);
+                    log.warn("添加SN到组失败: 序列号={}, 错误代码={}, 原因={}", serialNumber, errorCode, errorInfo);
+                    
+                    // 设置错误响应
+                    responseData.setConnectionStatus(OnboardingResponseData.CONNECTION_STATUS_NOT_CONNECTED);
+                    
+                    // 根据错误代码设置错误原因
+                    if (errorCode == 6026) {
+                        responseData.setErrorReason(OnboardingResponseData.ERROR_REASON_IN_OTHER_VPP);
+                        log.warn("设备已在其他VPP中 (code 6024): {}", serialNumber);
+                    } else {
+                        responseData.setErrorReason(OnboardingResponseData.ERROR_REASON_REGISTRATION_INCOMPLETE);
+                        log.warn("添加设备到组失败: {}, 错误代码: {}", serialNumber, errorCode);
+                    }
+                    
+                    // 发送错误响应
+                    sendOnboardingResponse(responseData);
+                    return;
                 }
-                
-                // 发送错误响应
-                sendOnboardingResponse(responseData);
-                return;
-            }
+        }
             
             // 获取系统信息用于构建响应
             List<SystemInfo> systems = byteWattService.getSystemList();
